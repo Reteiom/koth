@@ -207,7 +207,13 @@ export function LaunchForm() {
         {wallet.wrongNetwork && (
           <div className="notice notice-warn" role="alert">
             <Icon name="alert" />
-            <span>Your wallet is on another network. Switch to {NETWORK_NAME} to launch.</span>
+            <span>
+              Your wallet is on another network.{" "}
+              <button type="button" className="text-btn" onClick={wallet.switchNetwork}>
+                Switch to {NETWORK_NAME}
+              </button>{" "}
+              to launch.
+            </span>
           </div>
         )}
 

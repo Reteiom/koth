@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { tradeUrl } from "@/lib/config";
+import { isDemoData } from "@/lib/data";
 import { useCurrentRound, useToken, useTokenCompetition } from "@/lib/data/hooks";
 import {
   formatDateTime,
@@ -66,7 +67,8 @@ function TokenDetail({
   compError: boolean;
 }) {
   const entry = comp?.entry ?? null;
-  const trade = tradeUrl(token.address);
+  // Demo tokens do not exist on-chain, so never link them out.
+  const trade = isDemoData ? null : tradeUrl(token.address);
   const change = token.change1hPct;
 
   const links = [
@@ -87,7 +89,7 @@ function TokenDetail({
           </div>
           <div className="token-head-row">
             <span className="mono muted">${token.symbol}</span>
-            <CopyAddress address={token.address} label="contract address" />
+            <CopyAddress address={token.address} label="contract address" linkExplorer={!isDemoData} />
           </div>
         </div>
         <div className="token-head-actions">
@@ -188,7 +190,7 @@ function TokenDetail({
               <div className="wide">
                 <dt>Creator</dt>
                 <dd>
-                  <CopyAddress address={token.creator} label="creator address" />
+                  <CopyAddress address={token.creator} label="creator address" linkExplorer={!isDemoData} />
                 </dd>
               </div>
             )}

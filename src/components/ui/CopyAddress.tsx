@@ -5,9 +5,18 @@ import { explorerAddressUrl } from "@/lib/config";
 import { shortAddress } from "@/lib/format";
 import { Icon } from "./Icon";
 
-export function CopyAddress({ address, label }: { address: string; label?: string }) {
+export function CopyAddress({
+  address,
+  label,
+  linkExplorer = true,
+}: {
+  address: string;
+  label?: string;
+  /** Set false for addresses that do not exist on-chain (demo data). */
+  linkExplorer?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
-  const explorer = explorerAddressUrl(address);
+  const explorer = linkExplorer ? explorerAddressUrl(address) : null;
 
   async function copy() {
     try {

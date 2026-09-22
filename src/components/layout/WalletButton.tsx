@@ -37,7 +37,20 @@ export function WalletButton({ block = false }: { block?: boolean }) {
         {open && (
           <div className="wallet-menu card" role="menu">
             {w.wrongNetwork && (
-              <p className="wallet-warn">Switch your wallet to {NETWORK_NAME}.</p>
+              <>
+                <p className="wallet-warn">Your wallet is on another network.</p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="wallet-switch"
+                  onClick={() => {
+                    w.switchNetwork();
+                    setOpen(false);
+                  }}
+                >
+                  <Icon name="refresh" /> Switch to {NETWORK_NAME}
+                </button>
+              </>
             )}
             <button
               type="button"

@@ -33,7 +33,7 @@ export const MOCK_TOKENS: MockTokenSeed[] = [
       description: "Demo token. Built to sit at the top.",
       createdAt: created(6),
       creator: addr(101),
-      links: { website: "https://example.com" },
+      links: {},
     },
     baseCapUsd: 412_000,
     volatility: 0.16,

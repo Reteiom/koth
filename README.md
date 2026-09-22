@@ -55,10 +55,15 @@ mock data.
 - **Backend data** — implement the endpoints in `apiSource.ts`.
 - **Token launch** — `launchToken()` in `src/lib/launch.ts`; set
   `NEXT_PUBLIC_LAUNCH_ENABLED=true` when wired.
-- **Wallet** — `src/lib/wallet/WalletProvider.tsx` (injected EIP-1193). Set
-  `NEXT_PUBLIC_CHAIN_ID` to enable the wrong-network check.
-- **Explorer / trade links** — `NEXT_PUBLIC_EXPLORER_URL`,
-  `NEXT_PUBLIC_TRADE_URL_TEMPLATE`.
+- **Wallet** — `src/lib/wallet/WalletProvider.tsx` (injected EIP-1193).
+  Detects the wrong network and offers a switch to Robinhood Chain (adds the
+  chain to the wallet if needed).
+- **Network** — Robinhood Chain mainnet: chain id `4663`, explorer
+  `https://robinhoodchain.blockscout.com` (source:
+  https://docs.robinhood.com/chain/connecting).
+- **Trade links** — `https://www.ponsfamily.com/launchpad/{address}`.
+  Explorer and trade links are hidden for demo tokens, which do not exist
+  on-chain.
 
 See `.env.example` for every variable.
 

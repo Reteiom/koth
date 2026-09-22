@@ -23,25 +23,30 @@ export const PROTOCOL_FEE_BPS = 2000;
 /** Length of one King of the Hill round. */
 export const ROUND_DURATION_MS = 60 * 60 * 1000;
 
-/** Network the source launchpad runs on. */
+/**
+ * Network the source launchpad runs on. Defaults are Robinhood Chain mainnet
+ * as published at https://docs.robinhood.com/chain/connecting — env overrides
+ * exist for testnet or preview deployments.
+ */
 export const NETWORK_NAME = process.env.NEXT_PUBLIC_NETWORK_NAME || "Robinhood Chain";
 
-/**
- * Expected chain id (decimal). Left empty until confirmed — when empty the
- * wallet connector does not enforce a network.
- */
-export const EXPECTED_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID
-  ? Number(process.env.NEXT_PUBLIC_CHAIN_ID)
-  : undefined;
+/** Expected chain id (decimal). Robinhood Chain mainnet = 4663. */
+export const EXPECTED_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 4663);
 
-/** Block explorer base URL, e.g. https://explorer.example.com. Links are hidden when empty. */
-export const EXPLORER_URL = (process.env.NEXT_PUBLIC_EXPLORER_URL || "").replace(/\/$/, "");
+/** Public RPC, used only when asking the wallet to add the network. */
+export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.mainnet.chain.robinhood.com";
+
+/** Block explorer base URL (Blockscout). */
+export const EXPLORER_URL = (
+  process.env.NEXT_PUBLIC_EXPLORER_URL || "https://robinhoodchain.blockscout.com"
+).replace(/\/$/, "");
 
 /**
- * Trade link template on the source launchpad. `{address}` is replaced with the
- * token address. Hidden when empty.
+ * Token page on the source launchpad. `{address}` is replaced with the token
+ * address.
  */
-export const TRADE_URL_TEMPLATE = process.env.NEXT_PUBLIC_TRADE_URL_TEMPLATE || "";
+export const TRADE_URL_TEMPLATE =
+  process.env.NEXT_PUBLIC_TRADE_URL_TEMPLATE || "https://www.ponsfamily.com/launchpad/{address}";
 
 /** "mock" (default) or "api". */
 export const DATA_SOURCE: "mock" | "api" =

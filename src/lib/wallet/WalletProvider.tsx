@@ -6,7 +6,7 @@
  * its own — signing only happens inside explicit user flows (see lib/launch.ts).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { EXPECTED_CHAIN_ID } from "@/lib/config";
+import { EXPECTED_CHAIN_ID, EXPLORER_URL, NETWORK_NAME, RPC_URL } from "@/lib/config";
 import { getInjectedProvider, type Eip1193Provider } from "./eip1193";
 
 type WalletStatus = "unavailable" | "disconnected" | "connecting" | "connected";
@@ -21,6 +21,8 @@ interface WalletState {
   provider: Eip1193Provider | null;
   connect: () => Promise<void>;
   disconnect: () => void;
+  /** Asks the wallet to switch to the expected chain, adding it if unknown. */
+  switchNetwork: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -108,6 +110,41 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [provider]);
 
+  const switchNetwork = useCallback(async () => {
+    if (!provider) return;
+    const chainId = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
+    setError(null);
+    try {
+      await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId }] });
+    } catch (e) {
+      const code = (e as { code?: number }).code;
+      if (code === 4001) return;
+      // 4902: chain not added to the wallet yet.
+      if (code !== 4902) {
+        setError(`Could not switch to ${NETWORK_NAME}.`);
+        return;
+      }
+      try {
+        await provider.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId,
+              chainName: NETWORK_NAME,
+              nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+              rpcUrls: [RPC_URL],
+              blockExplorerUrls: [EXPLORER_URL],
+            },
+          ],
+        });
+      } catch (addError) {
+        if ((addError as { code?: number }).code !== 4001) {
+          setError(`Could not add ${NETWORK_NAME} to your wallet.`);
+        }
+      }
+    }
+  }, [provider]);
+
   const disconnect = useCallback(() => {
     setAddress(null);
     setError(null);
@@ -128,14 +165,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       status,
       address,
       chainId,
-      wrongNetwork:
-        status === "connected" && EXPECTED_CHAIN_ID !== undefined && chainId !== EXPECTED_CHAIN_ID,
+      wrongNetwork: status === "connected" && chainId !== null && chainId !== EXPECTED_CHAIN_ID,
       error,
       provider,
       connect,
       disconnect,
+      switchNetwork,
     };
-  }, [ready, provider, connecting, address, chainId, error, connect, disconnect]);
+  }, [ready, provider, connecting, address, chainId, error, connect, disconnect, switchNetwork]);
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
