@@ -3,18 +3,60 @@ import { NextResponse } from "next/server";
 import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "@/lib/upload";
 
 /**
- * Hosts a token image so its public URL can be stored on-chain.
+ * Hosts a token image so its address can be stored on-chain.
  *
- * Backed by Vercel Blob: create a Blob store in the Vercel project and the
- * BLOB_READ_WRITE_TOKEN variable is added automatically.
+ * Two ways to enable it, whichever is easier — set one environment variable:
+ *
+ *   PINATA_JWT              → pins to IPFS, stores ipfs://<cid> (preferred:
+ *                             permanent and the same form other tokens use)
+ *   BLOB_READ_WRITE_TOKEN   → Vercel Blob, added automatically when a Blob
+ *                             store is created in the project
+ *
+ * With neither set, uploads report 503 and the launch form asks for a link.
  */
+
+function provider(): "pinata" | "blob" | null {
+  if (process.env.PINATA_JWT) return "pinata";
+  if (process.env.BLOB_READ_WRITE_TOKEN) return "blob";
+  return null;
+}
+
 /** Lets the launch form know whether file uploads are available. */
 export async function GET() {
-  return NextResponse.json({ configured: Boolean(process.env.BLOB_READ_WRITE_TOKEN) });
+  return NextResponse.json({ configured: provider() !== null });
+}
+
+async function pinToIpfs(file: File): Promise<string> {
+  const body = new FormData();
+  body.append("file", file, file.name);
+  body.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
+
+  const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+    method: "POST",
+    headers: { authorization: `Bearer ${process.env.PINATA_JWT}` },
+    body,
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) {
+    throw new Error(`Pinata responded with ${res.status}`);
+  }
+  const data = (await res.json()) as { IpfsHash?: string };
+  if (!data.IpfsHash) throw new Error("Pinata returned no CID");
+  return `ipfs://${data.IpfsHash}`;
+}
+
+async function putInBlob(file: File): Promise<string> {
+  const blob = await put(`tokens/${file.name}`, file, {
+    access: "public",
+    addRandomSuffix: true,
+    contentType: file.type,
+  });
+  return blob.url;
 }
 
 export async function POST(request: Request) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const target = provider();
+  if (!target) {
     return NextResponse.json(
       { error: "Image hosting is not configured yet. Paste an image link instead." },
       { status: 503 },
@@ -34,12 +76,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const blob = await put(`tokens/${file.name}`, file, {
-      access: "public",
-      addRandomSuffix: true,
-      contentType: file.type,
-    });
-    return NextResponse.json({ url: blob.url });
+    const url = target === "pinata" ? await pinToIpfs(file) : await putInBlob(file);
+    return NextResponse.json({ url });
   } catch {
     return NextResponse.json({ error: "Upload failed. Try again." }, { status: 502 });
   }

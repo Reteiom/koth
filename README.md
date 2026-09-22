@@ -61,9 +61,11 @@ empty states).
   launchpad contract `0x0c37a24f5d23a486fa692d1500881d698b1f77a4` (the same one
   ponsfamily.com uses), simulating first and reading `launchFee()` per launch.
   The contract can pause launches (`launchEnabled()`), and the form says so.
-- **Image uploads** — `POST /api/upload` stores the token image in Vercel Blob
-  and returns its public URL, which is what the contract stores. Needs a Blob
-  store (`BLOB_READ_WRITE_TOKEN`); without one the form asks for a link.
+- **Image uploads** — `POST /api/upload` hosts the token image and returns the
+  address stored on-chain. Set either `PINATA_JWT` (pins to IPFS, returns
+  `ipfs://<cid>`) or `BLOB_READ_WRITE_TOKEN` (Vercel Blob). `GET /api/upload`
+  reports whether uploads are on; with neither set, the launch form asks for a
+  link instead.
 - **Wallet** — `src/lib/wallet/WalletProvider.tsx` (injected EIP-1193).
   Detects the wrong network and offers a switch to Robinhood Chain (adds the
   chain to the wallet if needed).
