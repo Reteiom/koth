@@ -17,8 +17,25 @@ export const SITE = {
 /** Public vault address that receives platform fees. */
 export const VAULT_ADDRESS = "0xe5d92f9f95cF9dCb278BE34E68C0cB3cd94a85C4";
 
-/** Protocol fee shown in the product economics, in basis points (2000 = 20%). */
-export const PROTOCOL_FEE_BPS = 2000;
+/**
+ * Fee model, as it works on-chain (verified against the launchpad and its fee
+ * collector):
+ *
+ *   every trade pays 1% → 70% to the token's fee wallet, 30% to the launchpad.
+ *
+ * Tokens launched here set their fee wallet to VAULT_ADDRESS, so the platform
+ * receives 0.7% of trading volume and the creator keeps none of it.
+ */
+export const TRADING_FEE_BPS = 100;
+export const PLATFORM_FEE_SHARE_PCT = 70;
+export const LAUNCHPAD_FEE_SHARE_PCT = 100 - PLATFORM_FEE_SHARE_PCT;
+/** The platform's cut of trading volume, in basis points (70 = 0.7%). */
+export const PLATFORM_FEE_BPS = (TRADING_FEE_BPS * PLATFORM_FEE_SHARE_PCT) / 100;
+
+/** Formats basis points for display: 100 → "1", 70 → "0.7". */
+export function feePct(bps: number): string {
+  return String(Number((bps / 100).toFixed(2)));
+}
 
 /** Length of one Peak round. */
 export const ROUND_DURATION_MS = 60 * 60 * 1000;

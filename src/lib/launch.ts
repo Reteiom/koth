@@ -23,6 +23,7 @@ import {
   launchpadAbi,
   launchpadChain,
 } from "@/lib/contracts/launchpad";
+import { VAULT_ADDRESS } from "@/lib/config";
 import type { Eip1193Provider } from "@/lib/wallet/eip1193";
 import type { LaunchTokenInput, LaunchTokenResult } from "@/lib/types";
 
@@ -148,8 +149,9 @@ export async function launchToken(
       website: input.website.trim(),
       farcaster: "",
     },
-    // Trading fees for this token go to its creator.
-    feeWallet: account,
+    // The token's share of trading fees funds the platform's buyback & burn,
+    // so its fee wallet is the vault rather than the creator.
+    feeWallet: VAULT_ADDRESS as `0x${string}`,
   } as const;
 
   try {

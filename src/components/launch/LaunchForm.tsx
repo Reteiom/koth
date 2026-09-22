@@ -4,7 +4,15 @@
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { formatEther } from "viem";
-import { explorerTxUrl, NETWORK_NAME, PROTOCOL_FEE_BPS, tradeUrl } from "@/lib/config";
+import {
+  explorerTxUrl,
+  feePct,
+  NETWORK_NAME,
+  PLATFORM_FEE_BPS,
+  PLATFORM_FEE_SHARE_PCT,
+  TRADING_FEE_BPS,
+  tradeUrl,
+} from "@/lib/config";
 import { imageUrl } from "@/lib/ipfs";
 import {
   getLaunchInfo,
@@ -318,6 +326,16 @@ export function LaunchForm() {
           />
         </fieldset>
 
+        <div className="notice" role="note">
+          <Icon name="vault" />
+          <span>
+            Your token&apos;s share of trading fees ({PLATFORM_FEE_SHARE_PCT}% of the{" "}
+            {feePct(TRADING_FEE_BPS)}% fee, so {feePct(PLATFORM_FEE_BPS)}% of volume) goes to the
+            platform vault, not to you. That is what funds the hourly buyback &amp; burn — including
+            of your token, if it wins.
+          </span>
+        </div>
+
         {wallet.wrongNetwork && (
           <div className="notice notice-warn" role="alert">
             <Icon name="alert" />
@@ -356,8 +374,7 @@ export function LaunchForm() {
         <p className="form-foot muted">
           {info && <>Launch fee {formatEther(info.feeWei)} ETH plus gas. </>}
           {!info && !infoError && <Skeleton width={150} height={12} />}
-          Trading carries a {PROTOCOL_FEE_BPS / 100}% protocol fee that funds the buyback &amp; burn
-          reward.
+          Trades on your token carry a {feePct(TRADING_FEE_BPS)}% fee.
         </p>
       </form>
 
@@ -396,6 +413,10 @@ export function LaunchForm() {
             </li>
             <li>
               <Icon name="flame" /> Win a round and platform fees buy back and burn your token.
+            </li>
+            <li>
+              <Icon name="vault" /> Trading fees on your token fund that vault — they do not go to
+              you.
             </li>
           </ol>
         </div>

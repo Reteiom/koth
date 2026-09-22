@@ -24,7 +24,7 @@ npm run lint
 
 | Route | Page |
 | --- | --- |
-| `/` | Hero, live Peak arena, leaderboard, reward loop, protocol fee, how it works, history |
+| `/` | Hero, live Peak arena, leaderboard, reward loop, fees, how it works, history |
 | `/leaderboard` | Full live leaderboard |
 | `/tokens` | All tokens (search, sort) |
 | `/tokens/[address]` | Token page: stats, throne status, countdown, position history, buyback & burn |
@@ -76,6 +76,15 @@ See `.env.example` for every variable.
 
 ## Economics shown in the UI
 
-- Protocol fee: **20%** (`PROTOCOL_FEE_BPS` in `src/lib/config.ts`)
+Verified against the launchpad and its fee collector on-chain:
+
+- Launch fee: one-time, read from the contract (`launchFee()`, currently 0.0005 ETH)
+- Trading fee: **1%** per trade, split **70% / 30%**
+- Tokens launched here set their fee wallet to the vault, so the platform takes
+  **0.7% of volume** and creators keep none of it; the other 0.3% goes to the
+  underlying launchpad protocol
 - Fee vault: `0xe5d92f9f95cF9dCb278BE34E68C0cB3cd94a85C4`
 - Round length: 1 hour
+
+The numbers live in `src/lib/config.ts` (`TRADING_FEE_BPS`,
+`PLATFORM_FEE_SHARE_PCT`); the fee wallet is set in `src/lib/launch.ts`.

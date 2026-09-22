@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PROTOCOL_FEE_BPS } from "@/lib/config";
+import { feePct, PLATFORM_FEE_BPS, TRADING_FEE_BPS } from "@/lib/config";
 import { useCurrentRound } from "@/lib/data/hooks";
 import { Countdown } from "@/components/arena/Countdown";
 import { Icon } from "@/components/ui/Icon";
@@ -10,7 +10,7 @@ const POINTS = [
   "Ranked by market cap",
   "1-hour rounds",
   "Winner bought back & burned",
-  `${PROTOCOL_FEE_BPS / 100}% protocol fee`,
+  `${feePct(TRADING_FEE_BPS)}% trading fee · ${feePct(PLATFORM_FEE_BPS)}% to the vault`,
 ];
 
 export function Hero() {

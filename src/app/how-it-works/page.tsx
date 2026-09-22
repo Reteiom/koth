@@ -3,7 +3,14 @@ import Link from "next/link";
 import { ProtocolFee } from "@/components/sections/ProtocolFee";
 import { RewardFlow } from "@/components/sections/RewardFlow";
 import { Icon } from "@/components/ui/Icon";
-import { NETWORK_NAME, PROTOCOL_FEE_BPS } from "@/lib/config";
+import {
+  feePct,
+  LAUNCHPAD_FEE_SHARE_PCT,
+  NETWORK_NAME,
+  PLATFORM_FEE_BPS,
+  PLATFORM_FEE_SHARE_PCT,
+  TRADING_FEE_BPS,
+} from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "How It Works",
@@ -30,7 +37,7 @@ const CYCLE: { title: string; text: string }[] = [
   },
   {
     title: "Reward",
-    text: "When the round closes, platform fees are put to work for the winner.",
+    text: `When the round closes, the fees collected in the vault — ${feePct(PLATFORM_FEE_BPS)}% of all trading volume — are put to work for the winner.`,
   },
   {
     title: "Buyback",
@@ -56,8 +63,12 @@ const FAQ = [
     a: "A buyback: platform fees are used to buy the winning token, and those tokens are burned. The winner's circulating supply goes down.",
   },
   {
-    q: `What is the ${PROTOCOL_FEE_BPS / 100}% protocol fee?`,
-    a: "It is the platform fee that funds the economy. Fees are collected in a public vault — its address is shown on this page — and power the round reward.",
+    q: "What fees does a token pay?",
+    a: `Every trade pays ${feePct(TRADING_FEE_BPS)}%. ${PLATFORM_FEE_SHARE_PCT}% of that — ${feePct(PLATFORM_FEE_BPS)}% of volume — goes to the platform vault shown on this page and funds the buyback and burn; the other ${LAUNCHPAD_FEE_SHARE_PCT}% goes to the underlying launchpad protocol. Launching a token also costs a one-time launch fee, shown on the launch page.`,
+  },
+  {
+    q: "Do creators earn the trading fees?",
+    a: "No. Tokens launched here send their share of trading fees to the platform vault, which is what pays for the hourly buyback and burn. Creators earn from holding their own token, not from its fees.",
   },
   {
     q: "Who runs the buyback and burn?",

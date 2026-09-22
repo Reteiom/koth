@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NETWORK_NAME, PROTOCOL_FEE_BPS, VAULT_ADDRESS } from "@/lib/config";
+import { feePct, NETWORK_NAME, TRADING_FEE_BPS, VAULT_ADDRESS } from "@/lib/config";
 import { CopyAddress } from "@/components/ui/CopyAddress";
 import { Logo } from "./Logo";
 
@@ -29,7 +29,7 @@ export function Footer() {
         </div>
         <div className="footer-bottom">
           <span>
-            {NETWORK_NAME} · Protocol fee {PROTOCOL_FEE_BPS / 100}%
+            {NETWORK_NAME} · Trading fee {feePct(TRADING_FEE_BPS)}%
           </span>
           <span className="footer-vault">
             Fee vault <CopyAddress address={VAULT_ADDRESS} label="vault address" />
