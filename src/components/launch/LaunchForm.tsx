@@ -1,12 +1,14 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- local object-URL preview */
+/* eslint-disable @next/next/no-img-element -- token art is hosted on arbitrary hosts */
 
 import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
-import { NETWORK_NAME, PROTOCOL_FEE_BPS } from "@/lib/config";
+import { formatEther } from "viem";
+import { explorerTxUrl, NETWORK_NAME, PROTOCOL_FEE_BPS, tradeUrl } from "@/lib/config";
 import {
-  LAUNCH_ENABLED,
-  LaunchNotAvailableError,
+  getLaunchInfo,
+  LaunchPausedError,
+  LaunchRejectedError,
   LIMITS,
   launchToken,
   validateLaunch,
@@ -15,23 +17,33 @@ import {
 import type { LaunchTokenInput, LaunchTokenResult } from "@/lib/types";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/States";
 import { TokenAvatar } from "@/components/ui/TokenAvatar";
 
 type Phase =
   | { kind: "idle" }
   | { kind: "pending" }
   | { kind: "success"; result: LaunchTokenResult }
-  | { kind: "error"; message: string; unavailable?: boolean };
+  | { kind: "error"; message: string; soft?: boolean };
 
 const EMPTY: LaunchTokenInput = {
   name: "",
   symbol: "",
   description: "",
-  image: null,
+  image: "",
   website: "",
   x: "",
   telegram: "",
+  initialBuyEth: "",
 };
+
+/** ipfs:// links are previewed through a public gateway; the chain stores the URI. */
+function previewSrc(value: string) {
+  const v = value.trim();
+  if (!v) return null;
+  if (v.startsWith("ipfs://")) return `https://ipfs.io/ipfs/${v.slice("ipfs://".length)}`;
+  return /^https?:\/\//.test(v) ? v : null;
+}
 
 export function LaunchForm() {
   const wallet = useWallet();
@@ -39,12 +51,23 @@ export function LaunchForm() {
   const [touched, setTouched] = useState<Partial<Record<keyof LaunchTokenInput, boolean>>>({});
   const [submitted, setSubmitted] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
+  const [info, setInfo] = useState<{ enabled: boolean; feeWei: bigint } | null>(null);
+  const [infoError, setInfoError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getLaunchInfo().then(
+      (v) => active && setInfo(v),
+      () => active && setInfoError(true),
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const errors: LaunchErrors = useMemo(() => validateLaunch(input), [input]);
   const show = (k: keyof LaunchTokenInput) => (submitted || touched[k] ? errors[k] : undefined);
-
-  const preview = useMemo(() => (input.image ? URL.createObjectURL(input.image) : null), [input.image]);
-  useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
+  const preview = previewSrc(input.image);
 
   function set<K extends keyof LaunchTokenInput>(key: K, value: LaunchTokenInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -66,37 +89,46 @@ export function LaunchForm() {
     }
     setPhase({ kind: "pending" });
     try {
-      const result = await launchToken(
-        { ...input, name: input.name.trim(), symbol: input.symbol.trim() },
-        wallet.provider,
-      );
+      const result = await launchToken(input, wallet.provider);
       setPhase({ kind: "success", result });
     } catch (err) {
-      if (err instanceof LaunchNotAvailableError) {
-        setPhase({ kind: "error", message: err.message, unavailable: true });
-      } else if ((err as { code?: number }).code === 4001) {
-        setPhase({ kind: "error", message: "Transaction was rejected in your wallet." });
+      if (err instanceof LaunchRejectedError) {
+        setPhase({ kind: "error", message: err.message });
+      } else if (err instanceof LaunchPausedError) {
+        setPhase({ kind: "error", message: err.message, soft: true });
       } else {
-        setPhase({ kind: "error", message: "Launch failed. Nothing was submitted — please try again." });
+        const detail = err instanceof Error ? err.message.split("\n")[0] : "";
+        setPhase({ kind: "error", message: detail || "Launch failed. Nothing was submitted." });
       }
     }
   }
 
   if (phase.kind === "success") {
+    const tx = explorerTxUrl(phase.result.txHash);
+    const trade = tradeUrl(phase.result.address);
     return (
       <div className="card card-pad launch-success">
         <span className="icon-tile">
           <Icon name="check" />
         </span>
-        <h2>{input.name} is in the arena.</h2>
-        <p className="lead">Your token is live and competing for the throne.</p>
+        <h2>{input.name} is live.</h2>
+        <p className="lead">
+          Your token is on {NETWORK_NAME} and competing for the Peak from its first trade.
+        </p>
         <div className="cta-row">
           <Link href={`/tokens/${phase.result.address}`} className="btn btn-primary">
             View token <Icon name="arrowRight" className="arrow" />
           </Link>
-          <Link href="/leaderboard" className="btn btn-ghost">
-            Leaderboard
-          </Link>
+          {trade && (
+            <a href={trade} target="_blank" rel="noreferrer" className="btn btn-ghost">
+              Trade <Icon name="arrowUpRight" />
+            </a>
+          )}
+          {tx && (
+            <a href={tx} target="_blank" rel="noreferrer" className="btn btn-ghost">
+              Transaction <Icon name="arrowUpRight" />
+            </a>
+          )}
         </div>
       </div>
     );
@@ -104,36 +136,38 @@ export function LaunchForm() {
 
   const connected = wallet.status === "connected";
   const pending = phase.kind === "pending";
+  const paused = info !== null && !info.enabled;
   const submitLabel = pending
     ? "Confirm in your wallet…"
-    : connected || wallet.status === "unavailable"
-      ? "Launch token"
-      : "Connect wallet to launch";
+    : paused
+      ? "Launches paused"
+      : connected || wallet.status === "unavailable"
+        ? "Launch token"
+        : "Connect wallet to launch";
 
   return (
     <div className="launch">
       <form className="card card-pad launch-form" onSubmit={onSubmit} noValidate>
-        {!LAUNCH_ENABLED && (
-          <div className="notice" role="note">
+        {paused && (
+          <div className="notice notice-warn" role="note">
             <Icon name="alert" />
             <span>
-              Launch is in preview. The contract integration is being connected — submitting will
-              not create a token yet.
+              The launchpad contract has launches turned off right now. You can prepare your token
+              here, but the transaction will not go through until they are re-enabled.
+            </span>
+          </div>
+        )}
+        {infoError && (
+          <div className="notice notice-warn" role="note">
+            <Icon name="alert" />
+            <span>
+              Could not reach {NETWORK_NAME} to read the launch fee. Check your connection.
             </span>
           </div>
         )}
 
         <fieldset disabled={pending}>
           <legend className="form-legend">Token</legend>
-          <ImageField
-            file={input.image}
-            preview={preview}
-            error={show("image")}
-            onChange={(f) => {
-              set("image", f);
-              setTouched((t) => ({ ...t, image: true }));
-            }}
-          />
           <div className="form-row">
             <Field
               label="Name"
@@ -157,6 +191,16 @@ export function LaunchForm() {
               required
             />
           </div>
+          <Field
+            label="Image link"
+            value={input.image}
+            onChange={(v) => set("image", v)}
+            onBlur={blur("image")}
+            error={show("image")}
+            placeholder="https://… or ipfs://…"
+            hint="Stored on-chain"
+            required
+          />
           <Field
             label="Description"
             value={input.description}
@@ -204,6 +248,22 @@ export function LaunchForm() {
           </div>
         </fieldset>
 
+        <fieldset disabled={pending}>
+          <legend className="form-legend">
+            First buy <span className="muted">optional</span>
+          </legend>
+          <Field
+            label="Buy at launch"
+            value={input.initialBuyEth}
+            onChange={(v) => set("initialBuyEth", v.replace(",", "."))}
+            onBlur={blur("initialBuyEth")}
+            error={show("initialBuyEth")}
+            placeholder="0.0"
+            suffix="ETH"
+            hint="Sent with the launch transaction"
+          />
+        </fieldset>
+
         {wallet.wrongNetwork && (
           <div className="notice notice-warn" role="alert">
             <Icon name="alert" />
@@ -218,7 +278,7 @@ export function LaunchForm() {
         )}
 
         {phase.kind === "error" && (
-          <div className={phase.unavailable ? "notice" : "inline-error"} role="alert">
+          <div className={phase.soft ? "notice notice-warn" : "inline-error"} role="alert">
             <Icon name="alert" />
             <span>{phase.message}</span>
           </div>
@@ -233,14 +293,17 @@ export function LaunchForm() {
         <button
           type="submit"
           className="btn btn-primary btn-lg launch-submit"
-          disabled={pending || wallet.status === "connecting" || wallet.wrongNetwork}
+          disabled={pending || paused || wallet.status === "connecting" || wallet.wrongNetwork}
         >
           {pending ? <span className="spinner" aria-hidden="true" /> : <Icon name="rocket" />}
           {submitLabel}
         </button>
+
         <p className="form-foot muted">
-          Trading on the platform carries a {PROTOCOL_FEE_BPS / 100}% protocol fee that funds the
-          buyback &amp; burn reward.
+          {info && <>Launch fee {formatEther(info.feeWei)} ETH plus gas. </>}
+          {!info && !infoError && <Skeleton width={150} height={12} />}
+          Trading carries a {PROTOCOL_FEE_BPS / 100}% protocol fee that funds the buyback &amp; burn
+          reward.
         </p>
       </form>
 
@@ -298,6 +361,7 @@ function Field({
   hint,
   maxLength,
   prefix,
+  suffix,
   type = "text",
   required,
 }: {
@@ -311,6 +375,7 @@ function Field({
   hint?: string;
   maxLength?: number;
   prefix?: string;
+  suffix?: string;
   type?: string;
   required?: boolean;
 }) {
@@ -337,68 +402,20 @@ function Field({
         {multiline ? (
           <textarea {...common} rows={3} onChange={(e) => onChange(e.target.value)} />
         ) : (
-          <input {...common} type={type} onChange={(e) => onChange(e.target.value)} autoComplete="off" />
+          <input
+            {...common}
+            type={type}
+            onChange={(e) => onChange(e.target.value)}
+            autoComplete="off"
+          />
         )}
+        {suffix && <span className="field-suffix">{suffix}</span>}
       </div>
       {error && (
         <span className="field-error" id={errId}>
           {error}
         </span>
       )}
-    </div>
-  );
-}
-
-function ImageField({
-  file,
-  preview,
-  error,
-  onChange,
-}: {
-  file: File | null;
-  preview: string | null;
-  error?: string;
-  onChange: (f: File | null) => void;
-}) {
-  const id = useId();
-  const [drag, setDrag] = useState(false);
-  return (
-    <div className={`field${error ? " has-error" : ""}`}>
-      <span className="field-label">Image</span>
-      <label
-        htmlFor={id}
-        className={`dropzone${drag ? " is-drag" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDrag(true);
-        }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDrag(false);
-          onChange(e.dataTransfer.files[0] ?? null);
-        }}
-      >
-        {preview ? (
-          <img src={preview} alt="Token image preview" className="dropzone-img" />
-        ) : (
-          <span className="icon-tile">
-            <Icon name="upload" />
-          </span>
-        )}
-        <span className="dropzone-text">
-          <strong>{file ? file.name : "Upload token image"}</strong>
-          <span className="muted">PNG, JPG, WEBP or GIF · up to 2 MB · square works best</span>
-        </span>
-        <input
-          id={id}
-          type="file"
-          accept={LIMITS.imageTypes.join(",")}
-          className="sr-only"
-          onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-        />
-      </label>
-      {error && <span className="field-error">{error}</span>}
     </div>
   );
 }

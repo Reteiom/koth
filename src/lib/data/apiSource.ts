@@ -1,7 +1,7 @@
 /**
  * HTTP implementation of LaunchpadDataSource.
  *
- * Enable with NEXT_PUBLIC_DATA_SOURCE=api and NEXT_PUBLIC_LAUNCHPAD_API_URL.
+ * Used automatically once NEXT_PUBLIC_LAUNCHPAD_API_URL is set.
  * The backend (fed by the Peak round bot) is expected to serve JSON that
  * matches the types in `@/lib/types`:
  *
@@ -50,7 +50,7 @@ export const apiSource: LaunchpadDataSource = {
   getToken: (address) => get(`/tokens/${enc(address)}`, { nullOn404: true }),
   getLeaderboard: () => get("/leaderboard"),
   getCurrentKing: () => get("/king", { nullOn404: true }),
-  getCurrentRound: () => get("/rounds/current"),
+  getCurrentRound: () => get("/rounds/current", { nullOn404: true }),
   getRoundHistory: (limit = 24) => get(`/rounds/history?limit=${limit}`),
   getRewardStats: () => get("/rewards"),
   getTokenCompetition: (address) => get(`/tokens/${enc(address)}/competition`),

@@ -1,11 +1,15 @@
-import { DATA_SOURCE } from "@/lib/config";
+import { API_URL } from "@/lib/config";
 import { apiSource } from "./apiSource";
-import { mockSource } from "./mock/mockSource";
+import { emptySource } from "./emptySource";
 import type { LaunchpadDataSource } from "./source";
 
-/** The active data source. Switch with NEXT_PUBLIC_DATA_SOURCE=api. */
-export const launchpad: LaunchpadDataSource = DATA_SOURCE === "api" ? apiSource : mockSource;
+/**
+ * The active data source: the launchpad API when it is configured, otherwise a
+ * source that reports no data yet.
+ */
+export const launchpad: LaunchpadDataSource = API_URL ? apiSource : emptySource;
 
-export const isDemoData = launchpad.kind === "mock";
+/** True when no backend is configured, so every section renders empty states. */
+export const isBackendConfigured = launchpad.kind === "api";
 
 export type { LaunchpadDataSource } from "./source";

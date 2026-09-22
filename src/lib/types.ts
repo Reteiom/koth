@@ -96,13 +96,16 @@ export interface LaunchTokenInput {
   name: string;
   symbol: string;
   description: string;
-  image: File | null;
+  /** Image link stored on-chain: https:// or ipfs://. */
+  image: string;
   website: string;
   x: string;
   telegram: string;
+  /** Optional first buy, in ETH, sent with the launch transaction. */
+  initialBuyEth: string;
 }
 
 export interface LaunchTokenResult {
   address: Address;
-  txHash: string | null;
+  txHash: `0x${string}`;
 }

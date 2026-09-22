@@ -1,34 +1,62 @@
 /**
- * Token launch integration point.
+ * Token launch through the launchpad contract (see lib/contracts/launchpad.ts).
  *
- * The launch itself happens through the underlying launchpad contracts, which
- * are not wired into this frontend yet. `launchToken` is the single place to
- * connect them: build the transaction from `input`, send it through the
- * connected wallet (`provider`), wait for the receipt and return the new
- * token address.
+ * The transaction is always simulated before the wallet is asked to sign, so
+ * reverts surface as a message instead of a failed transaction.
  */
+import {
+  createPublicClient,
+  createWalletClient,
+  custom,
+  http,
+  keccak256,
+  parseEther,
+  toHex,
+  BaseError,
+  UserRejectedRequestError,
+} from "viem";
+import {
+  LAUNCHPAD_ADDRESS,
+  LAUNCH_CONFIG_ID,
+  LAUNCH_DEX_ID,
+  launchpadAbi,
+  launchpadChain,
+} from "@/lib/contracts/launchpad";
 import type { Eip1193Provider } from "@/lib/wallet/eip1193";
 import type { LaunchTokenInput, LaunchTokenResult } from "@/lib/types";
 
-export class LaunchNotAvailableError extends Error {
+export class LaunchPausedError extends Error {
   constructor() {
-    super("Token launch is not connected yet. The launch contract integration is pending.");
-    this.name = "LaunchNotAvailableError";
+    super("Launches are currently paused on the launchpad contract.");
+    this.name = "LaunchPausedError";
   }
 }
 
-export const LAUNCH_ENABLED = process.env.NEXT_PUBLIC_LAUNCH_ENABLED === "true";
+export class LaunchRejectedError extends Error {
+  constructor() {
+    super("The transaction was rejected in your wallet.");
+    this.name = "LaunchRejectedError";
+  }
+}
 
 export const LIMITS = {
   nameMax: 32,
   symbolMin: 2,
   symbolMax: 10,
   descriptionMax: 280,
-  imageMaxBytes: 2 * 1024 * 1024,
-  imageTypes: ["image/png", "image/jpeg", "image/webp", "image/gif"],
 } as const;
 
 export type LaunchErrors = Partial<Record<keyof LaunchTokenInput, string>>;
+
+function isHttpOrIpfs(value: string) {
+  if (value.startsWith("ipfs://")) return value.length > "ipfs://".length;
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
 
 function isUrl(value: string) {
   try {
@@ -55,24 +83,87 @@ export function validateLaunch(input: LaunchTokenInput): LaunchErrors {
   if (input.description.length > LIMITS.descriptionMax)
     errors.description = `Keep it under ${LIMITS.descriptionMax} characters.`;
 
-  if (!input.image) errors.image = "Upload a token image.";
-  else if (!(LIMITS.imageTypes as readonly string[]).includes(input.image.type))
-    errors.image = "PNG, JPG, WEBP or GIF only.";
-  else if (input.image.size > LIMITS.imageMaxBytes) errors.image = "Max file size is 2 MB.";
+  if (!input.image.trim()) errors.image = "Image link is required.";
+  else if (!isHttpOrIpfs(input.image.trim())) errors.image = "Use an https:// or ipfs:// link.";
 
   if (input.website && !isUrl(input.website)) errors.website = "Enter a full URL (https://…).";
   if (input.x && !isUrl(input.x)) errors.x = "Enter a full URL (https://x.com/…).";
   if (input.telegram && !isUrl(input.telegram)) errors.telegram = "Enter a full URL (https://t.me/…).";
 
+  const buy = input.initialBuyEth.trim();
+  if (buy) {
+    if (!/^\d*\.?\d*$/.test(buy) || Number(buy) < 0) errors.initialBuyEth = "Enter an amount in ETH.";
+    else if (Number(buy) > 0 && Number(buy) < 0.0001) errors.initialBuyEth = "Too small — use at least 0.0001.";
+  }
+
   return errors;
+}
+
+function publicClient() {
+  return createPublicClient({ chain: launchpadChain, transport: http() });
+}
+
+/** Contract state the launch form needs: whether launches are on and the fee. */
+export async function getLaunchInfo(): Promise<{ enabled: boolean; feeWei: bigint }> {
+  const client = publicClient();
+  const [enabled, feeWei] = await Promise.all([
+    client.readContract({ address: LAUNCHPAD_ADDRESS, abi: launchpadAbi, functionName: "launchEnabled" }),
+    client.readContract({ address: LAUNCHPAD_ADDRESS, abi: launchpadAbi, functionName: "launchFee" }),
+  ]);
+  return { enabled, feeWei };
+}
+
+/** Random per-launch salt, matching how the source launchpad derives it. */
+function newSalt(symbol: string) {
+  return keccak256(toHex(`${symbol}:${Date.now()}:${Math.random()}`));
 }
 
 export async function launchToken(
   input: LaunchTokenInput,
   provider: Eip1193Provider,
 ): Promise<LaunchTokenResult> {
-  void input;
-  void provider;
-  // Integration point: replace with the launch contract call.
-  throw new LaunchNotAvailableError();
+  const walletClient = createWalletClient({ chain: launchpadChain, transport: custom(provider) });
+  const [account] = await walletClient.getAddresses();
+  if (!account) throw new Error("Connect a wallet to launch.");
+
+  const client = publicClient();
+  const { enabled, feeWei } = await getLaunchInfo();
+  if (!enabled) throw new LaunchPausedError();
+
+  const initialBuyWei = input.initialBuyEth.trim() ? parseEther(input.initialBuyEth.trim()) : 0n;
+  const params = {
+    name: input.name.trim(),
+    symbol: input.symbol.trim(),
+    logo: input.image.trim(),
+    description: input.description.trim(),
+    socials: {
+      twitter: input.x.trim(),
+      telegram: input.telegram.trim(),
+      discord: "",
+      website: input.website.trim(),
+      farcaster: "",
+    },
+    // Trading fees for this token go to its creator.
+    feeWallet: account,
+  } as const;
+
+  try {
+    const { request, result } = await client.simulateContract({
+      account,
+      address: LAUNCHPAD_ADDRESS,
+      abi: launchpadAbi,
+      functionName: "launchToken",
+      args: [params, LAUNCH_CONFIG_ID, LAUNCH_DEX_ID, newSalt(params.symbol)],
+      value: feeWei + initialBuyWei,
+    });
+
+    const txHash = await walletClient.writeContract(request);
+    await client.waitForTransactionReceipt({ hash: txHash });
+    return { address: result, txHash };
+  } catch (error) {
+    if (error instanceof BaseError && error.walk((e) => e instanceof UserRejectedRequestError)) {
+      throw new LaunchRejectedError();
+    }
+    throw error;
+  }
 }

@@ -10,12 +10,11 @@ import type {
 
 /**
  * Everything the UI reads about the launchpad goes through this interface.
- * Components never import mock data directly — they use hooks that call the
+ * Components never call a source directly — they use hooks that call the
  * active source (see `./index.ts`).
  */
 export interface LaunchpadDataSource {
-  /** "mock" sources are labelled as demo data in the UI. */
-  readonly kind: "mock" | "api";
+  readonly kind: "empty" | "api";
 
   getTokens(): Promise<Token[]>;
   /** Resolves to null when the token is unknown. */
@@ -23,7 +22,8 @@ export interface LaunchpadDataSource {
   /** Ranked by market cap, descending. */
   getLeaderboard(): Promise<LeaderboardEntry[]>;
   getCurrentKing(): Promise<LeaderboardEntry | null>;
-  getCurrentRound(): Promise<Round>;
+  /** Null while no round is running or reported. */
+  getCurrentRound(): Promise<Round | null>;
   /** Settled rounds, newest first. */
   getRoundHistory(limit?: number): Promise<RoundResult[]>;
   getRewardStats(): Promise<RewardStats>;

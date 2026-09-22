@@ -3,7 +3,7 @@
 import { useRewardStats } from "@/lib/data/hooks";
 import { formatNumber, formatUsd } from "@/lib/format";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { DemoBadge, Skeleton } from "@/components/ui/States";
+import { Skeleton } from "@/components/ui/States";
 
 const STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "vault", title: "Platform fees", text: "Collected from trading activity into the vault." },
@@ -60,9 +60,6 @@ export function RewardStatsRow() {
           )}
         </div>
       ))}
-      <div className="reward-stats-badge">
-        <DemoBadge />
-      </div>
     </div>
   );
 }

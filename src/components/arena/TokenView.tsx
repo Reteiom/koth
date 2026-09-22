@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { tradeUrl } from "@/lib/config";
-import { isDemoData } from "@/lib/data";
 import { useCurrentRound, useToken, useTokenCompetition } from "@/lib/data/hooks";
 import {
   formatDateTime,
@@ -16,7 +15,7 @@ import type { Address, Token, TokenCompetition } from "@/lib/types";
 import { AnimatedValue } from "@/components/ui/AnimatedValue";
 import { CopyAddress } from "@/components/ui/CopyAddress";
 import { Icon } from "@/components/ui/Icon";
-import { DemoBadge, EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TokenAvatar } from "@/components/ui/TokenAvatar";
 import { Countdown } from "./Countdown";
@@ -67,8 +66,7 @@ function TokenDetail({
   compError: boolean;
 }) {
   const entry = comp?.entry ?? null;
-  // Demo tokens do not exist on-chain, so never link them out.
-  const trade = isDemoData ? null : tradeUrl(token.address);
+  const trade = tradeUrl(token.address);
   const change = token.change1hPct;
 
   const links = [
@@ -85,11 +83,10 @@ function TokenDetail({
           <div className="token-head-row">
             <h1>{token.name}</h1>
             {entry && <StatusBadge status={entry.status} />}
-            <DemoBadge />
           </div>
           <div className="token-head-row">
             <span className="mono muted">${token.symbol}</span>
-            <CopyAddress address={token.address} label="contract address" linkExplorer={!isDemoData} />
+            <CopyAddress address={token.address} label="contract address" />
           </div>
         </div>
         <div className="token-head-actions">
@@ -190,7 +187,7 @@ function TokenDetail({
               <div className="wide">
                 <dt>Creator</dt>
                 <dd>
-                  <CopyAddress address={token.creator} label="creator address" linkExplorer={!isDemoData} />
+                  <CopyAddress address={token.creator} label="creator address" />
                 </dd>
               </div>
             )}

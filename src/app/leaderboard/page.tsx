@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { LeaderboardTable } from "@/components/arena/LeaderboardTable";
 import { RoundStrip } from "@/components/arena/RoundStrip";
-import { DemoBadge } from "@/components/ui/States";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
@@ -23,7 +22,6 @@ export default function LeaderboardPage() {
       </header>
       <div className="page-toolbar">
         <RoundStrip />
-        <DemoBadge />
       </div>
       <LeaderboardTable />
     </div>

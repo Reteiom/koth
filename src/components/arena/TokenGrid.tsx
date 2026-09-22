@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useLeaderboard } from "@/lib/data/hooks";
 import { formatPct, formatRelative, formatUsd } from "@/lib/format";
 import { Icon } from "@/components/ui/Icon";
-import { DemoBadge, EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TokenAvatar } from "@/components/ui/TokenAvatar";
 
@@ -68,7 +68,6 @@ export function TokenGrid() {
             </button>
           ))}
         </div>
-        <DemoBadge />
       </div>
 
       {board.status === "loading" && (

@@ -8,7 +8,7 @@ import { useFlip } from "@/lib/hooks";
 import type { LeaderboardEntry } from "@/lib/types";
 import { AnimatedValue } from "@/components/ui/AnimatedValue";
 import { Icon } from "@/components/ui/Icon";
-import { DemoBadge, EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
+import { EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TokenAvatar } from "@/components/ui/TokenAvatar";
 import { Countdown } from "./Countdown";
@@ -37,7 +37,6 @@ export function LiveArena() {
             Round <span className="num">{round.data ? `#${round.data.id}` : "—"}</span>
           </span>
         </div>
-        <DemoBadge />
       </div>
 
       {board.status === "loading" && <ArenaSkeleton />}

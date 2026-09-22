@@ -48,11 +48,7 @@ export const EXPLORER_URL = (
 export const TRADE_URL_TEMPLATE =
   process.env.NEXT_PUBLIC_TRADE_URL_TEMPLATE || "https://www.ponsfamily.com/launchpad/{address}";
 
-/** "mock" (default) or "api". */
-export const DATA_SOURCE: "mock" | "api" =
-  process.env.NEXT_PUBLIC_DATA_SOURCE === "api" ? "api" : "mock";
-
-/** Base URL of the launchpad backend (used when DATA_SOURCE === "api"). */
+/** Base URL of the launchpad backend (when set, the app uses it instead of empty data). */
 export const API_URL = (process.env.NEXT_PUBLIC_LAUNCHPAD_API_URL || "").replace(/\/$/, "");
 
 /** How often live views refresh. */

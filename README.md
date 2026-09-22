@@ -38,23 +38,23 @@ All UI reads go through `LaunchpadDataSource` (`src/lib/data/source.ts`):
 
 `getTokens · getToken · getLeaderboard · getCurrentKing · getCurrentRound · getRoundHistory · getRewardStats · getTokenCompetition`
 
-- `src/lib/data/mock/` — simulated demo arena (fictional tokens). The UI shows a
-  **Demo data** badge whenever this source is active.
+- `src/lib/data/emptySource.ts` — used until the API is configured: reports no
+  data so the UI renders its empty states. No fake tokens anywhere.
 - `src/lib/data/apiSource.ts` — HTTP source for the bot's backend. The expected
   endpoints are listed at the top of the file.
-- Switch with `NEXT_PUBLIC_DATA_SOURCE=api` + `NEXT_PUBLIC_LAUNCHPAD_API_URL`.
+- Set `NEXT_PUBLIC_LAUNCHPAD_API_URL` to switch to the API automatically.
 
 Components use hooks from `src/lib/data/hooks.ts` (polling, loading / error /
-empty states). No component imports mock data directly.
-
-QA: append `?demo=empty`, `?demo=error` or `?demo=slow` to any URL while on
-mock data.
+empty states).
 
 ## Integration points
 
-- **Backend data** — implement the endpoints in `apiSource.ts`.
-- **Token launch** — `launchToken()` in `src/lib/launch.ts`; set
-  `NEXT_PUBLIC_LAUNCH_ENABLED=true` when wired.
+- **Backend data** — implement the endpoints in `apiSource.ts`, then set
+  `NEXT_PUBLIC_LAUNCHPAD_API_URL`.
+- **Token launch** — live. `launchToken()` in `src/lib/launch.ts` calls the
+  launchpad contract `0x0c37a24f5d23a486fa692d1500881d698b1f77a4` (the same one
+  ponsfamily.com uses), simulating first and reading `launchFee()` per launch.
+  The contract can pause launches (`launchEnabled()`), and the form says so.
 - **Wallet** — `src/lib/wallet/WalletProvider.tsx` (injected EIP-1193).
   Detects the wrong network and offers a switch to Robinhood Chain (adds the
   chain to the wallet if needed).
@@ -62,8 +62,6 @@ mock data.
   `https://robinhoodchain.blockscout.com` (source:
   https://docs.robinhood.com/chain/connecting).
 - **Trade links** — `https://www.ponsfamily.com/launchpad/{address}`.
-  Explorer and trade links are hidden for demo tokens, which do not exist
-  on-chain.
 
 See `.env.example` for every variable.
 

@@ -1,5 +1,4 @@
 import type { CSSProperties, ReactNode } from "react";
-import { isDemoData } from "@/lib/data";
 import { Icon, type IconName } from "./Icon";
 
 export function Skeleton({
@@ -70,15 +69,3 @@ export function ErrorState({
   );
 }
 
-/** Marks sections that currently render simulated data. */
-export function DemoBadge() {
-  if (!isDemoData) return null;
-  return (
-    <span
-      className="badge badge-demo"
-      title="Simulated data for preview. Live data appears once the launchpad backend is connected."
-    >
-      Demo data
-    </span>
-  );
-}
