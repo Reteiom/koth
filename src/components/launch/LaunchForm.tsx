@@ -15,6 +15,7 @@ import {
   type LaunchErrors,
 } from "@/lib/launch";
 import type { LaunchTokenInput, LaunchTokenResult } from "@/lib/types";
+import { IMAGE_TYPES, UploadUnavailableError, uploadTokenImage, validateImageFile } from "@/lib/upload";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { Icon } from "@/components/ui/Icon";
 import { Skeleton } from "@/components/ui/States";
@@ -22,9 +23,12 @@ import { TokenAvatar } from "@/components/ui/TokenAvatar";
 
 type Phase =
   | { kind: "idle" }
+  | { kind: "uploading" }
   | { kind: "pending" }
   | { kind: "success"; result: LaunchTokenResult }
   | { kind: "error"; message: string; soft?: boolean };
+
+type ImageMode = "file" | "link";
 
 const EMPTY: LaunchTokenInput = {
   name: "",
@@ -38,7 +42,7 @@ const EMPTY: LaunchTokenInput = {
 };
 
 /** ipfs:// links are previewed through a public gateway; the chain stores the URI. */
-function previewSrc(value: string) {
+function linkPreview(value: string) {
   const v = value.trim();
   if (!v) return null;
   if (v.startsWith("ipfs://")) return `https://ipfs.io/ipfs/${v.slice("ipfs://".length)}`;
@@ -48,6 +52,8 @@ function previewSrc(value: string) {
 export function LaunchForm() {
   const wallet = useWallet();
   const [input, setInput] = useState<LaunchTokenInput>(EMPTY);
+  const [imageMode, setImageMode] = useState<ImageMode>("file");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [touched, setTouched] = useState<Partial<Record<keyof LaunchTokenInput, boolean>>>({});
   const [submitted, setSubmitted] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
@@ -65,9 +71,28 @@ export function LaunchForm() {
     };
   }, []);
 
-  const errors: LaunchErrors = useMemo(() => validateLaunch(input), [input]);
+  // Validate against a stand-in URL while an uploaded file stands in for the link.
+  const errors: LaunchErrors = useMemo(
+    () => validateLaunch(imageMode === "file" ? { ...input, image: "file://selected" } : input),
+    [input, imageMode],
+  );
+  const imageError =
+    imageMode === "file"
+      ? imageFile
+        ? validateImageFile(imageFile)
+        : "Upload a token image."
+      : errors.image;
+  const invalid = Object.keys(errors).length > 0 || Boolean(imageError);
+
   const show = (k: keyof LaunchTokenInput) => (submitted || touched[k] ? errors[k] : undefined);
-  const preview = previewSrc(input.image);
+  const showImageError = submitted || touched.image ? imageError : undefined;
+
+  const filePreview = useMemo(
+    () => (imageFile ? URL.createObjectURL(imageFile) : null),
+    [imageFile],
+  );
+  useEffect(() => () => void (filePreview && URL.revokeObjectURL(filePreview)), [filePreview]);
+  const preview = imageMode === "file" ? filePreview : linkPreview(input.image);
 
   function set<K extends keyof LaunchTokenInput>(key: K, value: LaunchTokenInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -75,10 +100,22 @@ export function LaunchForm() {
   }
   const blur = (k: keyof LaunchTokenInput) => () => setTouched((t) => ({ ...t, [k]: true }));
 
+  function pickFile(file: File | null) {
+    setImageFile(file);
+    setTouched((t) => ({ ...t, image: true }));
+    if (phase.kind === "error") setPhase({ kind: "idle" });
+  }
+
+  function switchMode(mode: ImageMode) {
+    setImageMode(mode);
+    setTouched((t) => ({ ...t, image: false }));
+    if (phase.kind === "error") setPhase({ kind: "idle" });
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
-    if (Object.keys(errors).length > 0) return;
+    if (invalid) return;
     if (wallet.status === "unavailable") {
       setPhase({ kind: "error", message: "No wallet found. Install a browser wallet to launch." });
       return;
@@ -87,9 +124,26 @@ export function LaunchForm() {
       await wallet.connect();
       return;
     }
+
+    let imageUrl = input.image.trim();
+    if (imageMode === "file" && imageFile) {
+      setPhase({ kind: "uploading" });
+      try {
+        imageUrl = await uploadTokenImage(imageFile);
+      } catch (err) {
+        if (err instanceof UploadUnavailableError) {
+          setImageMode("link");
+          setPhase({ kind: "error", message: err.message, soft: true });
+        } else {
+          setPhase({ kind: "error", message: err instanceof Error ? err.message : "Upload failed." });
+        }
+        return;
+      }
+    }
+
     setPhase({ kind: "pending" });
     try {
-      const result = await launchToken(input, wallet.provider);
+      const result = await launchToken({ ...input, image: imageUrl }, wallet.provider);
       setPhase({ kind: "success", result });
     } catch (err) {
       if (err instanceof LaunchRejectedError) {
@@ -135,15 +189,19 @@ export function LaunchForm() {
   }
 
   const connected = wallet.status === "connected";
+  const uploading = phase.kind === "uploading";
   const pending = phase.kind === "pending";
+  const busy = uploading || pending;
   const paused = info !== null && !info.enabled;
-  const submitLabel = pending
-    ? "Confirm in your wallet…"
-    : paused
-      ? "Launches paused"
-      : connected || wallet.status === "unavailable"
-        ? "Launch token"
-        : "Connect wallet to launch";
+  const submitLabel = uploading
+    ? "Uploading image…"
+    : pending
+      ? "Confirm in your wallet…"
+      : paused
+        ? "Launches paused"
+        : connected || wallet.status === "unavailable"
+          ? "Launch token"
+          : "Connect wallet to launch";
 
   return (
     <div className="launch">
@@ -166,7 +224,7 @@ export function LaunchForm() {
           </div>
         )}
 
-        <fieldset disabled={pending}>
+        <fieldset disabled={busy}>
           <legend className="form-legend">Token</legend>
           <div className="form-row">
             <Field
@@ -191,16 +249,19 @@ export function LaunchForm() {
               required
             />
           </div>
-          <Field
-            label="Image link"
-            value={input.image}
-            onChange={(v) => set("image", v)}
-            onBlur={blur("image")}
-            error={show("image")}
-            placeholder="https://… or ipfs://…"
-            hint="Stored on-chain"
-            required
+
+          <ImageField
+            mode={imageMode}
+            onModeChange={switchMode}
+            file={imageFile}
+            preview={preview}
+            link={input.image}
+            onFile={pickFile}
+            onLink={(v) => set("image", v)}
+            onLinkBlur={blur("image")}
+            error={showImageError}
           />
+
           <Field
             label="Description"
             value={input.description}
@@ -213,7 +274,7 @@ export function LaunchForm() {
           />
         </fieldset>
 
-        <fieldset disabled={pending}>
+        <fieldset disabled={busy}>
           <legend className="form-legend">
             Links <span className="muted">optional</span>
           </legend>
@@ -248,7 +309,7 @@ export function LaunchForm() {
           </div>
         </fieldset>
 
-        <fieldset disabled={pending}>
+        <fieldset disabled={busy}>
           <legend className="form-legend">
             First buy <span className="muted">optional</span>
           </legend>
@@ -284,7 +345,7 @@ export function LaunchForm() {
           </div>
         )}
 
-        {submitted && Object.keys(errors).length > 0 && (
+        {submitted && invalid && (
           <p className="form-summary" role="alert">
             Fix the highlighted fields to continue.
           </p>
@@ -293,9 +354,9 @@ export function LaunchForm() {
         <button
           type="submit"
           className="btn btn-primary btn-lg launch-submit"
-          disabled={pending || paused || wallet.status === "connecting" || wallet.wrongNetwork}
+          disabled={busy || paused || wallet.status === "connecting" || wallet.wrongNetwork}
         >
-          {pending ? <span className="spinner" aria-hidden="true" /> : <Icon name="rocket" />}
+          {busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="rocket" />}
           {submitLabel}
         </button>
 
@@ -346,6 +407,99 @@ export function LaunchForm() {
           </ol>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function ImageField({
+  mode,
+  onModeChange,
+  file,
+  preview,
+  link,
+  onFile,
+  onLink,
+  onLinkBlur,
+  error,
+}: {
+  mode: ImageMode;
+  onModeChange: (mode: ImageMode) => void;
+  file: File | null;
+  preview: string | null;
+  link: string;
+  onFile: (file: File | null) => void;
+  onLink: (value: string) => void;
+  onLinkBlur: () => void;
+  error?: string;
+}) {
+  const id = useId();
+  const [drag, setDrag] = useState(false);
+
+  return (
+    <div className={`field${error ? " has-error" : ""}`}>
+      <span className="field-label">
+        Image
+        <button
+          type="button"
+          className="text-btn field-hint"
+          onClick={() => onModeChange(mode === "file" ? "link" : "file")}
+        >
+          {mode === "file" ? "Use a link instead" : "Upload a file instead"}
+        </button>
+      </span>
+
+      {mode === "file" ? (
+        <label
+          htmlFor={id}
+          className={`dropzone${drag ? " is-drag" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            onFile(e.dataTransfer.files[0] ?? null);
+          }}
+        >
+          {preview ? (
+            <img src={preview} alt="Token image preview" className="dropzone-img" />
+          ) : (
+            <span className="icon-tile">
+              <Icon name="upload" />
+            </span>
+          )}
+          <span className="dropzone-text">
+            <strong>{file ? file.name : "Upload token image"}</strong>
+            <span className="muted">PNG, JPG, WEBP or GIF · up to 2 MB · square works best</span>
+          </span>
+          <input
+            id={id}
+            type="file"
+            accept={IMAGE_TYPES.join(",")}
+            className="sr-only"
+            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+      ) : (
+        <div className="field-control">
+          <input
+            type="text"
+            value={link}
+            placeholder="https://… or ipfs://…"
+            onChange={(e) => onLink(e.target.value)}
+            onBlur={onLinkBlur}
+            autoComplete="off"
+            aria-label="Image link"
+          />
+        </div>
+      )}
+      {error ? (
+        <span className="field-error">{error}</span>
+      ) : (
+        <span className="field-note muted">The image link is stored on-chain with your token.</span>
+      )}
     </div>
   );
 }
