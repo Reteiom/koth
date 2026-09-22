@@ -17,6 +17,17 @@ export function validateImageFile(file: File): string | undefined {
   return undefined;
 }
 
+/** Whether file uploads are available (image hosting configured). */
+export async function isUploadAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/upload");
+    const data = (await res.json()) as { configured?: boolean };
+    return Boolean(data.configured);
+  } catch {
+    return false;
+  }
+}
+
 /** Uploads the image and returns its public URL. */
 export async function uploadTokenImage(file: File): Promise<string> {
   const body = new FormData();

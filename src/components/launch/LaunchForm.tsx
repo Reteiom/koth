@@ -24,7 +24,13 @@ import {
   type LaunchErrors,
 } from "@/lib/launch";
 import type { LaunchTokenInput, LaunchTokenResult } from "@/lib/types";
-import { IMAGE_TYPES, UploadUnavailableError, uploadTokenImage, validateImageFile } from "@/lib/upload";
+import {
+  IMAGE_TYPES,
+  isUploadAvailable,
+  UploadUnavailableError,
+  uploadTokenImage,
+  validateImageFile,
+} from "@/lib/upload";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { Icon } from "@/components/ui/Icon";
 import { Skeleton } from "@/components/ui/States";
@@ -60,6 +66,21 @@ export function LaunchForm() {
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [info, setInfo] = useState<{ enabled: boolean; feeWei: bigint } | null>(null);
   const [infoError, setInfoError] = useState(false);
+  /** Null while unknown; false means the form must ask for a link. */
+  const [uploads, setUploads] = useState<boolean | null>(null);
+
+  // Ask once whether file uploads are possible, so the form never dead-ends.
+  useEffect(() => {
+    let active = true;
+    isUploadAvailable().then((available) => {
+      if (!active) return;
+      setUploads(available);
+      if (!available) setImageMode("link");
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -253,6 +274,7 @@ export function LaunchForm() {
 
           <ImageField
             mode={imageMode}
+            uploadsAvailable={uploads !== false}
             onModeChange={switchMode}
             file={imageFile}
             preview={preview}
@@ -427,6 +449,7 @@ export function LaunchForm() {
 
 function ImageField({
   mode,
+  uploadsAvailable,
   onModeChange,
   file,
   preview,
@@ -437,6 +460,7 @@ function ImageField({
   error,
 }: {
   mode: ImageMode;
+  uploadsAvailable: boolean;
   onModeChange: (mode: ImageMode) => void;
   file: File | null;
   preview: string | null;
@@ -453,13 +477,15 @@ function ImageField({
     <div className={`field${error ? " has-error" : ""}`}>
       <span className="field-label">
         Image
-        <button
-          type="button"
-          className="text-btn field-hint"
-          onClick={() => onModeChange(mode === "file" ? "link" : "file")}
-        >
-          {mode === "file" ? "Use a link instead" : "Upload a file instead"}
-        </button>
+        {(uploadsAvailable || mode === "file") && (
+          <button
+            type="button"
+            className="text-btn field-hint"
+            onClick={() => onModeChange(mode === "file" ? "link" : "file")}
+          >
+            {mode === "file" ? "Use a link instead" : "Upload a file instead"}
+          </button>
+        )}
       </span>
 
       {mode === "file" ? (
@@ -512,7 +538,11 @@ function ImageField({
       {error ? (
         <span className="field-error">{error}</span>
       ) : (
-        <span className="field-note muted">The image link is stored on-chain with your token.</span>
+        <span className="field-note muted">
+          {uploadsAvailable
+            ? "The image link is stored on-chain with your token."
+            : "File uploads are off until image hosting is set up. Paste a link — it is stored on-chain with your token."}
+        </span>
       )}
     </div>
   );

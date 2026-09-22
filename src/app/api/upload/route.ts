@@ -8,6 +8,11 @@ import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "@/lib/upload";
  * Backed by Vercel Blob: create a Blob store in the Vercel project and the
  * BLOB_READ_WRITE_TOKEN variable is added automatically.
  */
+/** Lets the launch form know whether file uploads are available. */
+export async function GET() {
+  return NextResponse.json({ configured: Boolean(process.env.BLOB_READ_WRITE_TOKEN) });
+}
+
 export async function POST(request: Request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
