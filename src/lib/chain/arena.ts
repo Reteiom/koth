@@ -399,12 +399,26 @@ export async function getLeaderboard(limit = BOARD_SIZE): Promise<LeaderboardEnt
   }));
 }
 
+/**
+ * When counting starts. Until ROUNDS_START_AT is set the counter stays at 0:
+ * the hourly clock still runs, but no round has been played yet.
+ */
+const ROUNDS_START_AT = process.env.ROUNDS_START_AT
+  ? Date.parse(process.env.ROUNDS_START_AT)
+  : null;
+
+function roundNumber(now: number): number {
+  if (ROUNDS_START_AT === null || Number.isNaN(ROUNDS_START_AT) || now < ROUNDS_START_AT) return 0;
+  return Math.floor((now - ROUNDS_START_AT) / ROUND_DURATION_MS) + 1;
+}
+
 /** Rounds run on the hour; winners are settled by the bot. */
 export async function getCurrentRound(): Promise<Round> {
   const board = await getLeaderboard(1);
-  const start = Math.floor(Date.now() / ROUND_DURATION_MS) * ROUND_DURATION_MS;
+  const now = Date.now();
+  const start = Math.floor(now / ROUND_DURATION_MS) * ROUND_DURATION_MS;
   return {
-    id: Math.floor(start / ROUND_DURATION_MS),
+    id: roundNumber(now),
     startsAt: new Date(start).toISOString(),
     endsAt: new Date(start + ROUND_DURATION_MS).toISOString(),
     kingAddress: board[0]?.token.address ?? null,
