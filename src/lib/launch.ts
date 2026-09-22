@@ -19,6 +19,7 @@ import {
   LAUNCHPAD_ADDRESS,
   LAUNCH_CONFIG_ID,
   LAUNCH_DEX_ID,
+  LAUNCH_SALT_PREFIX,
   launchpadAbi,
   launchpadChain,
 } from "@/lib/contracts/launchpad";
@@ -113,9 +114,13 @@ export async function getLaunchInfo(): Promise<{ enabled: boolean; feeWei: bigin
   return { enabled, feeWei };
 }
 
-/** Random per-launch salt, matching how the source launchpad derives it. */
-function newSalt(symbol: string) {
-  return keccak256(toHex(`${symbol}:${Date.now()}:${Math.random()}`));
+/**
+ * Per-launch salt: our marker followed by 28 random bytes, so the launch stays
+ * unique and is still recognisable as ours on-chain.
+ */
+function newSalt(symbol: string): `0x${string}` {
+  const random = keccak256(toHex(`${symbol}:${Date.now()}:${Math.random()}`));
+  return `${LAUNCH_SALT_PREFIX}${random.slice(2 + 8)}` as `0x${string}`;
 }
 
 export async function launchToken(

@@ -40,8 +40,11 @@ All UI reads go through `LaunchpadDataSource` (`src/lib/data/source.ts`):
 
 - `src/lib/data/apiSource.ts` — HTTP source. It points at `/api/arena` by
   default, which reads the arena straight from the chain
-  (`src/lib/chain/arena.ts`): launched tokens, their metadata and market caps
-  from each token's pool price. Nothing is invented — what the chain cannot
+  (`src/lib/chain/arena.ts`): tokens launched **from this site**, their
+  metadata and market caps from each token's pool price. Ours are identified
+  on-chain — every launch here marks its salt with `LAUNCH_SALT_PREFIX`
+  ("PEAK"), so tokens launched elsewhere on the same launchpad are excluded
+  without needing a database. Nothing is invented — what the chain cannot
   answer (volume, hourly change, round winners, buybacks) stays null.
 - `src/lib/data/emptySource.ts` — fallback that reports no data at all.
 - Set `NEXT_PUBLIC_LAUNCHPAD_API_URL` to hand the site to the round bot's

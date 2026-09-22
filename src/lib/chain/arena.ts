@@ -1,8 +1,9 @@
 /**
  * Reads the arena straight from the chain.
  *
- * Tokens launched through the launchpad contract (including every token
- * launched on this site) are discovered from its TokenLaunched events. Market
+ * Only tokens launched through this site are listed. Every launch from here
+ * marks its salt with LAUNCH_SALT_PREFIX, so ours can be told apart from other
+ * launches on the same contract by reading the launch transaction. Market
  * caps come from each token's pool price; names, images and socials come from
  * the token contracts. Runs on the server only — see app/api/arena.
  *
@@ -12,6 +13,7 @@
  */
 import {
   createPublicClient,
+  decodeFunctionData,
   http,
   parseAbi,
   parseAbiItem,
@@ -19,8 +21,9 @@ import {
   type PublicClient,
 } from "viem";
 import {
+  ARENA_FROM_BLOCK,
   LAUNCHPAD_ADDRESS,
-  LEGACY_LAUNCHPAD_ADDRESSES,
+  LAUNCH_SALT_PREFIX,
   launchpadAbi,
   launchpadChain,
 } from "@/lib/contracts/launchpad";
@@ -45,7 +48,7 @@ const poolAbi = parseAbi([
   "function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)",
 ]);
 
-const FROM_BLOCK = BigInt(process.env.LAUNCHPAD_FROM_BLOCK || 0);
+
 /** How many tokens the site ranks. */
 const BOARD_SIZE = Number(process.env.ARENA_BOARD_SIZE || 100);
 
@@ -60,6 +63,7 @@ interface Launch {
   creator: Address;
   blockNumber: bigint;
   source: Address;
+  txHash: `0x${string}`;
   configId: bigint;
   /** Quote token of the pool (WETH). */
   pairToken: Address;
@@ -93,6 +97,8 @@ let launchesScannedTo: bigint | null = null;
 let launchesCheckedAt = 0;
 
 const configSupply = new Map<string, number>();
+/** Whether a launch came from this site — immutable, so cached for good. */
+const ownLaunch = new Map<string, boolean>();
 const meta = new Map<string, TokenMeta>();
 
 let capCache: { at: number; byToken: Map<string, number> } | null = null;
@@ -128,10 +134,10 @@ async function loadLaunches(): Promise<Launch[]> {
   }
   return once("launches", async () => {
     const head = await rpc().getBlockNumber();
-    const from = launchesScannedTo === null ? FROM_BLOCK : launchesScannedTo + 1n;
+    const from = launchesScannedTo === null ? ARENA_FROM_BLOCK : launchesScannedTo + 1n;
     if (head >= from) {
       const logs = await rpc().getLogs({
-        address: [LAUNCHPAD_ADDRESS, ...LEGACY_LAUNCHPAD_ADDRESSES],
+        address: LAUNCHPAD_ADDRESS,
         event: TOKEN_LAUNCHED,
         fromBlock: from,
         toBlock: head,
@@ -146,6 +152,7 @@ async function loadLaunches(): Promise<Launch[]> {
           creator: deployer,
           blockNumber: log.blockNumber,
           source: log.address as Address,
+          txHash: log.transactionHash,
           configId: launchConfigId ?? 0n,
           pairToken,
           isToken0: token.toLowerCase() < pairToken.toLowerCase(),
@@ -157,6 +164,40 @@ async function loadLaunches(): Promise<Launch[]> {
     launchesCheckedAt = Date.now();
     return [...launches.values()];
   });
+}
+
+/**
+ * True when the launch came from this site: its transaction called launchToken
+ * with a salt carrying our marker.
+ */
+async function isOurs(launch: Launch): Promise<boolean> {
+  const cached = ownLaunch.get(launch.key);
+  if (cached !== undefined) return cached;
+  let mine = false;
+  try {
+    const tx = await rpc().getTransaction({ hash: launch.txHash });
+    const { args } = decodeFunctionData({ abi: launchpadAbi, data: tx.input });
+    const salt = args?.[3];
+    mine = typeof salt === "string" && salt.toLowerCase().startsWith(LAUNCH_SALT_PREFIX);
+  } catch {
+    mine = false;
+  }
+  ownLaunch.set(launch.key, mine);
+  return mine;
+}
+
+/** The launches this site made, newest first. */
+async function ourLaunches(): Promise<Launch[]> {
+  const all = await loadLaunches();
+  const mine: Launch[] = [];
+  await chunked(all, 10, async (chunk) => {
+    const flags = await Promise.all(chunk.map(isOurs));
+    chunk.forEach((launch, index) => {
+      if (flags[index]) mine.push(launch);
+    });
+    return [];
+  });
+  return mine;
 }
 
 /** Every token of a launch config shares its supply, so it is read once per config. */
@@ -318,7 +359,7 @@ function toToken(launch: Launch, capEth: number | null, usd: number | null): Tok
 
 /** Top tokens by market cap, highest first. */
 export async function getTokens(limit = BOARD_SIZE): Promise<Token[]> {
-  const items = await loadLaunches();
+  const items = await ourLaunches();
   await loadSupplies(items);
   const [caps, usd] = await Promise.all([loadCaps(items), ethUsd()]);
 
@@ -332,7 +373,7 @@ export async function getTokens(limit = BOARD_SIZE): Promise<Token[]> {
 }
 
 export async function getToken(address: string): Promise<Token | null> {
-  const items = await loadLaunches();
+  const items = await ourLaunches();
   const launch = items.find((l) => l.key === address.toLowerCase());
   if (!launch) return null;
   await loadSupplies([launch]);

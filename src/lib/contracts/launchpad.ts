@@ -10,15 +10,20 @@ export const LAUNCHPAD_ADDRESS = (process.env.NEXT_PUBLIC_LAUNCHPAD_CONTRACT ||
   "0xf4fc0cd27fc8ecf17e55ee4c3f7201897df3eb75") as `0x${string}`;
 
 /**
- * Older launchpad deployments. New tokens always go through LAUNCHPAD_ADDRESS,
- * but tokens launched earlier still belong in the arena.
+ * Marks launches made through this site.
+ *
+ * The launchpad takes an arbitrary salt, so every launch from here starts its
+ * salt with these four bytes ("PEAK"). That makes our tokens identifiable from
+ * the chain alone — no database, and nobody can be added to the arena by
+ * accident. Tokens launched elsewhere on the same launchpad are not ours.
  */
-export const LEGACY_LAUNCHPAD_ADDRESSES = (
-  process.env.NEXT_PUBLIC_LEGACY_LAUNCHPADS || "0x0c37a24f5d23a486fa692d1500881d698b1f77a4"
-)
-  .split(",")
-  .map((a) => a.trim())
-  .filter(Boolean) as `0x${string}`[];
+export const LAUNCH_SALT_PREFIX = "0x5045414b";
+
+/**
+ * Launches before this block predate this site, so they are never scanned.
+ * Override to re-scan from further back.
+ */
+export const ARENA_FROM_BLOCK = BigInt(process.env.NEXT_PUBLIC_ARENA_FROM_BLOCK || 69964144);
 
 /** Launch config and DEX selected for new tokens (the launchpad's defaults). */
 export const LAUNCH_CONFIG_ID = BigInt(process.env.NEXT_PUBLIC_LAUNCH_CONFIG_ID || 0);
