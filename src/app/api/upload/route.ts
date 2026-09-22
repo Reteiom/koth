@@ -15,15 +15,28 @@ import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "@/lib/upload";
  * With neither set, uploads report 503 and the launch form asks for a link.
  */
 
+/**
+ * Vercel names the token after the store it belongs to (BLOB_READ_WRITE_TOKEN,
+ * but also e.g. PEAK_READ_WRITE_TOKEN), so any of them is accepted.
+ */
+function blobToken(): string | undefined {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!value) continue;
+    if (name.endsWith("_READ_WRITE_TOKEN") || value.startsWith("vercel_blob_rw_")) return value;
+  }
+  return undefined;
+}
+
 function provider(): "pinata" | "blob" | null {
   if (process.env.PINATA_JWT) return "pinata";
-  if (process.env.BLOB_READ_WRITE_TOKEN) return "blob";
+  if (blobToken()) return "blob";
   return null;
 }
 
 /** Lets the launch form know whether file uploads are available. */
 export async function GET() {
-  return NextResponse.json({ configured: provider() !== null });
+  return NextResponse.json({ configured: provider() !== null, provider: provider() });
 }
 
 async function pinToIpfs(file: File): Promise<string> {
@@ -50,6 +63,7 @@ async function putInBlob(file: File): Promise<string> {
     access: "public",
     addRandomSuffix: true,
     contentType: file.type,
+    token: blobToken(),
   });
   return blob.url;
 }
