@@ -48,8 +48,14 @@ export const EXPLORER_URL = (
 export const TRADE_URL_TEMPLATE =
   process.env.NEXT_PUBLIC_TRADE_URL_TEMPLATE || "https://www.ponsfamily.com/launchpad/{address}";
 
-/** Base URL of the launchpad backend (when set, the app uses it instead of empty data). */
-export const API_URL = (process.env.NEXT_PUBLIC_LAUNCHPAD_API_URL || "").replace(/\/$/, "");
+/**
+ * Base URL of the launchpad API. Defaults to this app's own chain-backed API
+ * (see app/api/arena); point it at the round bot's backend once that exists.
+ */
+export const API_URL = (process.env.NEXT_PUBLIC_LAUNCHPAD_API_URL || "/api/arena").replace(
+  /\/$/,
+  "",
+);
 
 /** How often live views refresh. */
 export const POLL_INTERVAL_MS = 10_000;
@@ -65,3 +71,4 @@ export function explorerTxUrl(hash: string): string | null {
 export function tradeUrl(address: string): string | null {
   return TRADE_URL_TEMPLATE ? TRADE_URL_TEMPLATE.replace("{address}", address) : null;
 }
+

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useState } from "react";
 import { formatEther } from "viem";
 import { explorerTxUrl, NETWORK_NAME, PROTOCOL_FEE_BPS, tradeUrl } from "@/lib/config";
+import { imageUrl } from "@/lib/ipfs";
 import {
   getLaunchInfo,
   LaunchPausedError,
@@ -40,14 +41,6 @@ const EMPTY: LaunchTokenInput = {
   telegram: "",
   initialBuyEth: "",
 };
-
-/** ipfs:// links are previewed through a public gateway; the chain stores the URI. */
-function linkPreview(value: string) {
-  const v = value.trim();
-  if (!v) return null;
-  if (v.startsWith("ipfs://")) return `https://ipfs.io/ipfs/${v.slice("ipfs://".length)}`;
-  return /^https?:\/\//.test(v) ? v : null;
-}
 
 export function LaunchForm() {
   const wallet = useWallet();
@@ -92,7 +85,7 @@ export function LaunchForm() {
     [imageFile],
   );
   useEffect(() => () => void (filePreview && URL.revokeObjectURL(filePreview)), [filePreview]);
-  const preview = imageMode === "file" ? filePreview : linkPreview(input.image);
+  const preview = imageMode === "file" ? filePreview : imageUrl(input.image);
 
   function set<K extends keyof LaunchTokenInput>(key: K, value: LaunchTokenInput[K]) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -125,11 +118,11 @@ export function LaunchForm() {
       return;
     }
 
-    let imageUrl = input.image.trim();
+    let imageRef = input.image.trim();
     if (imageMode === "file" && imageFile) {
       setPhase({ kind: "uploading" });
       try {
-        imageUrl = await uploadTokenImage(imageFile);
+        imageRef = await uploadTokenImage(imageFile);
       } catch (err) {
         if (err instanceof UploadUnavailableError) {
           setImageMode("link");
@@ -143,7 +136,7 @@ export function LaunchForm() {
 
     setPhase({ kind: "pending" });
     try {
-      const result = await launchToken({ ...input, image: imageUrl }, wallet.provider);
+      const result = await launchToken({ ...input, image: imageRef }, wallet.provider);
       setPhase({ kind: "success", result });
     } catch (err) {
       if (err instanceof LaunchRejectedError) {

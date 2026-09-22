@@ -38,11 +38,14 @@ All UI reads go through `LaunchpadDataSource` (`src/lib/data/source.ts`):
 
 `getTokens · getToken · getLeaderboard · getCurrentKing · getCurrentRound · getRoundHistory · getRewardStats · getTokenCompetition`
 
-- `src/lib/data/emptySource.ts` — used until the API is configured: reports no
-  data so the UI renders its empty states. No fake tokens anywhere.
-- `src/lib/data/apiSource.ts` — HTTP source for the bot's backend. The expected
-  endpoints are listed at the top of the file.
-- Set `NEXT_PUBLIC_LAUNCHPAD_API_URL` to switch to the API automatically.
+- `src/lib/data/apiSource.ts` — HTTP source. It points at `/api/arena` by
+  default, which reads the arena straight from the chain
+  (`src/lib/chain/arena.ts`): launched tokens, their metadata and market caps
+  from each token's pool price. Nothing is invented — what the chain cannot
+  answer (volume, hourly change, round winners, buybacks) stays null.
+- `src/lib/data/emptySource.ts` — fallback that reports no data at all.
+- Set `NEXT_PUBLIC_LAUNCHPAD_API_URL` to hand the site to the round bot's
+  backend instead; the shape of the responses is unchanged.
 
 Components use hooks from `src/lib/data/hooks.ts` (polling, loading / error /
 empty states).
