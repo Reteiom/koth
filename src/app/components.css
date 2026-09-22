@@ -38,16 +38,14 @@
   flex: none;
 }
 
-.logo {
+.brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
 }
 
-.logo-word {
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  font-size: 14px;
+.logo {
+  display: block;
+  width: auto;
 }
 
 .nav {

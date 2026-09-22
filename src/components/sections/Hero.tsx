@@ -29,7 +29,7 @@ export function Hero() {
         </a>
 
         <h1 className="hero-title">
-          <span className="hero-kicker">King of the Hill</span>
+          <span className="hero-kicker">Peak launchpad</span>
           Tokens fight for <br className="hero-br" />
           the <span className="serif accent">throne.</span>
         </h1>

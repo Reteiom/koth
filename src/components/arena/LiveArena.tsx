@@ -15,7 +15,7 @@ import { Countdown } from "./Countdown";
 
 const usd = (v: number) => formatUsd(v);
 
-/** The live King of the Hill panel: current king, countdown and closest challengers. */
+/** The live Peak panel: current king, countdown and closest challengers. */
 export function LiveArena() {
   const board = useLeaderboard();
   const round = useCurrentRound();

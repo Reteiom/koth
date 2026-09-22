@@ -21,7 +21,7 @@ export function LeaderboardTable({ limit }: { limit?: number }) {
   useFlip(bodyRef, rows.map((r) => r.token.address).join());
 
   return (
-    <div className="lb card" role="table" aria-label="King of the Hill leaderboard">
+    <div className="lb card" role="table" aria-label="Peak leaderboard">
       <div className="lb-row lb-head" role="row">
         <span role="columnheader">#</span>
         <span role="columnheader">Token</span>

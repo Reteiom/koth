@@ -209,7 +209,7 @@ function ThronePanel({ comp, compError }: { comp: TokenCompetition | undefined; 
   return (
     <section className={`card card-pad throne-panel${isKing ? " is-king" : ""}`}>
       <div className="panel-head">
-        <h2>{isKing ? "King of the Hill" : "The throne"}</h2>
+        <h2>{isKing ? "At the Peak" : "The throne"}</h2>
         {isKing && <Icon name="crown" className="panel-icon" />}
       </div>
 

@@ -7,11 +7,11 @@
  */
 
 export const SITE = {
-  name: "KOTH",
-  fullName: "King of the Hill",
+  name: "Peak",
+  fullName: "Peak",
   tagline: "Tokens fight for the throne.",
   description:
-    "A launchpad where tokens compete on market cap. Every hour the King of the Hill wins the round — and platform fees buy back and burn the winner.",
+    "A launchpad where tokens compete on market cap. Every hour the token at the Peak wins the round — and platform fees buy back and burn the winner.",
 } as const;
 
 /** Public vault address that receives platform fees. */
@@ -20,7 +20,7 @@ export const VAULT_ADDRESS = "0xe5d92f9f95cF9dCb278BE34E68C0cB3cd94a85C4";
 /** Protocol fee shown in the product economics, in basis points (2000 = 20%). */
 export const PROTOCOL_FEE_BPS = 2000;
 
-/** Length of one King of the Hill round. */
+/** Length of one Peak round. */
 export const ROUND_DURATION_MS = 60 * 60 * 1000;
 
 /**

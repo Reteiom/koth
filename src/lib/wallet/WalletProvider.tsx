@@ -27,7 +27,7 @@ interface WalletState {
 
 const WalletContext = createContext<WalletState | null>(null);
 
-const STORAGE_KEY = "koth.wallet.autoconnect";
+const STORAGE_KEY = "peak.wallet.autoconnect";
 
 function readFlag() {
   try {

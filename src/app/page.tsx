@@ -14,7 +14,7 @@ export default function HomePage() {
     <>
       <Hero />
 
-      <section className="container arena-section" aria-label="Live King of the Hill">
+      <section className="container arena-section" aria-label="Live Peak arena">
         <LiveArena />
       </section>
 

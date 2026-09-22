@@ -18,7 +18,7 @@ const CYCLE: { title: string; text: string }[] = [
   },
   {
     title: "Compete",
-    text: "The token enters the King of the Hill arena alongside every other token on the platform.",
+    text: "The token enters the Peak arena alongside every other token on the platform.",
   },
   {
     title: "Climb",
@@ -26,7 +26,7 @@ const CYCLE: { title: string; text: string }[] = [
   },
   {
     title: "Hold the throne",
-    text: "Each round lasts one hour. The token that holds King of the Hill under the round rules is the round's winner.",
+    text: "Each round lasts one hour. The token that holds the Peak under the round rules is the round's winner.",
   },
   {
     title: "Reward",
@@ -44,7 +44,7 @@ const CYCLE: { title: string; text: string }[] = [
 
 const FAQ = [
   {
-    q: "What decides the King of the Hill?",
+    q: "What decides who holds the Peak?",
     a: "Market cap. It is the only metric the arena ranks by. The token with the highest market cap is at #1.",
   },
   {

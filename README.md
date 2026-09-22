@@ -1,6 +1,6 @@
-# KOTH — King of the Hill launchpad
+# Peak — token launchpad
 
-Tokens compete on market cap in one-hour rounds. The King of the Hill wins the
+Tokens compete on market cap in one-hour rounds. The token at the Peak wins the
 round, and platform fees buy back and burn the winner.
 
 This repo is the **frontend / product layer** only. Round settlement, buyback,
@@ -24,7 +24,7 @@ npm run lint
 
 | Route | Page |
 | --- | --- |
-| `/` | Hero, live King of the Hill, leaderboard, reward loop, protocol fee, how it works, history |
+| `/` | Hero, live Peak arena, leaderboard, reward loop, protocol fee, how it works, history |
 | `/leaderboard` | Full live leaderboard |
 | `/tokens` | All tokens (search, sort) |
 | `/tokens/[address]` | Token page: stats, throne status, countdown, position history, buyback & burn |

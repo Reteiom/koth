@@ -2,7 +2,7 @@
  * HTTP implementation of LaunchpadDataSource.
  *
  * Enable with NEXT_PUBLIC_DATA_SOURCE=api and NEXT_PUBLIC_LAUNCHPAD_API_URL.
- * The backend (fed by the King of the Hill bot) is expected to serve JSON that
+ * The backend (fed by the Peak round bot) is expected to serve JSON that
  * matches the types in `@/lib/types`:
  *
  *   GET /tokens                        → Token[]

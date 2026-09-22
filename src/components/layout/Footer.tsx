@@ -9,7 +9,7 @@ export function Footer() {
       <div className="container">
         <div className="footer-top">
           <div className="footer-brand">
-            <Logo />
+            <Logo height={46} />
             <p>Competition creates attention. Attention creates volume. Volume fuels the throne.</p>
           </div>
           <div className="footer-cols">

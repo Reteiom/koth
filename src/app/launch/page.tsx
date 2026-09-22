@@ -3,7 +3,7 @@ import { LaunchForm } from "@/components/launch/LaunchForm";
 
 export const metadata: Metadata = {
   title: "Launch a Token",
-  description: "Launch a token and enter the King of the Hill arena.",
+  description: "Launch a token and enter the Peak arena.",
 };
 
 export default function LaunchPage() {

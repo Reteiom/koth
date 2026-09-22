@@ -49,7 +49,7 @@ export function Header() {
     <header className={`header${scrolled ? " is-scrolled" : ""}${open ? " is-open" : ""}`}>
       <div className="container">
         <div className="header-bar">
-          <Link href="/" className="brand" aria-label="KOTH home">
+          <Link href="/" className="brand" aria-label="Peak home">
             <Logo />
           </Link>
 

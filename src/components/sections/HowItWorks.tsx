@@ -19,7 +19,7 @@ export const HOW_STEPS: { icon: IconName; title: string; text: string }[] = [
   {
     icon: "crown",
     title: "Hold the throne",
-    text: "Rounds last one hour. The King of the Hill when the round closes wins it.",
+    text: "Rounds last one hour. The token at the Peak when the round closes wins it.",
   },
   {
     icon: "flame",

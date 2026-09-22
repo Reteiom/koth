@@ -275,7 +275,7 @@ export function LaunchForm() {
               <Icon name="swords" /> Your token enters the arena and is ranked by market cap.
             </li>
             <li>
-              <Icon name="clock" /> Rounds last one hour. Take #1 to become King of the Hill.
+              <Icon name="clock" /> Rounds last one hour. Take #1 to hold the Peak.
             </li>
             <li>
               <Icon name="flame" /> Win a round and platform fees buy back and burn your token.

@@ -17,7 +17,7 @@ export default function LeaderboardPage() {
           Ranked by <span className="serif accent">market cap.</span>
         </h1>
         <p className="lead">
-          The token at #1 is the King of the Hill. Hold it when the round closes to win the buyback
+          The token at #1 holds the Peak. Hold it when the round closes to win the buyback
           and burn.
         </p>
       </header>
