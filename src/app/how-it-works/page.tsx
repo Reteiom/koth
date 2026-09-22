@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProtocolFee } from "@/components/sections/ProtocolFee";
 import { RewardFlow } from "@/components/sections/RewardFlow";
-import { Icon, type IconName } from "@/components/ui/Icon";
+import { Icon } from "@/components/ui/Icon";
 import { NETWORK_NAME, PROTOCOL_FEE_BPS } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -11,39 +11,32 @@ export const metadata: Metadata = {
     "Tokens compete on market cap in one-hour rounds. The winner is bought back with platform fees and burned.",
 };
 
-const CYCLE: { icon: IconName; title: string; text: string }[] = [
+const CYCLE: { title: string; text: string }[] = [
   {
-    icon: "rocket",
     title: "Launch",
     text: `A creator launches a token through the platform on ${NETWORK_NAME}.`,
   },
   {
-    icon: "swords",
     title: "Compete",
     text: "The token enters the King of the Hill arena alongside every other token on the platform.",
   },
   {
-    icon: "trendUp",
     title: "Climb",
     text: "Tokens are ranked by market cap. The higher a token's market cap relative to the rest, the higher it sits on the leaderboard.",
   },
   {
-    icon: "crown",
     title: "Hold the throne",
     text: "Each round lasts one hour. The token that holds King of the Hill under the round rules is the round's winner.",
   },
   {
-    icon: "coins",
     title: "Reward",
     text: "When the round closes, platform fees are put to work for the winner.",
   },
   {
-    icon: "refresh",
     title: "Buyback",
     text: "Fees are used to buy back the winning token from the market.",
   },
   {
-    icon: "flame",
     title: "Burn",
     text: "The bought-back tokens are burned, permanently reducing the winner's circulating supply.",
   },
@@ -94,9 +87,6 @@ export default function HowItWorksPage() {
         {CYCLE.map((s, i) => (
           <li key={s.title} className="cycle-step card">
             <span className="cycle-index num">{String(i + 1).padStart(2, "0")}</span>
-            <span className="icon-tile">
-              <Icon name={s.icon} />
-            </span>
             <div>
               <h3>{s.title}</h3>
               <p>{s.text}</p>

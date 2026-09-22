@@ -1459,9 +1459,9 @@
 
 .cycle-step {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto 1fr;
   align-items: start;
-  gap: 16px;
+  gap: 18px;
   padding: 22px;
 }
 
@@ -1470,15 +1470,14 @@
 }
 
 .cycle-index {
-  padding-top: 10px;
+  padding-top: 4px;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--lime);
 }
 
 .cycle-step h3 {
   font-size: 19px;
   letter-spacing: -0.02em;
-  padding-top: 8px;
 }
 
 .cycle-step p {
@@ -1492,11 +1491,7 @@
     grid-template-columns: 1fr;
   }
   .cycle-step {
-    grid-template-columns: auto 1fr;
     padding: 18px;
-  }
-  .cycle-index {
-    display: none;
   }
 }
 
