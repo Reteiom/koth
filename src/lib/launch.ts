@@ -23,13 +23,13 @@ import {
   launchpadAbi,
   launchpadChain,
 } from "@/lib/contracts/launchpad";
-import { VAULT_ADDRESS } from "@/lib/config";
+import { LAUNCHES_OPEN, VAULT_ADDRESS } from "@/lib/config";
 import type { Eip1193Provider } from "@/lib/wallet/eip1193";
 import type { LaunchTokenInput, LaunchTokenResult } from "@/lib/types";
 
 export class LaunchPausedError extends Error {
-  constructor() {
-    super("Launches are currently paused on the launchpad contract.");
+  constructor(message = "Launches are currently paused on the launchpad contract.") {
+    super(message);
     this.name = "LaunchPausedError";
   }
 }
@@ -128,6 +128,9 @@ export async function launchToken(
   input: LaunchTokenInput,
   provider: Eip1193Provider,
 ): Promise<LaunchTokenResult> {
+  // Guard here too, not only in the form: nothing reaches the wallet while paused.
+  if (!LAUNCHES_OPEN) throw new LaunchPausedError("Launching from this site is paused for now.");
+
   const walletClient = createWalletClient({ chain: launchpadChain, transport: custom(provider) });
   const [account] = await walletClient.getAddresses();
   if (!account) throw new Error("Connect a wallet to launch.");

@@ -14,6 +14,14 @@ export const SITE = {
     "A launchpad where tokens compete on market cap. Every hour the token at the Peak wins the round — and platform fees buy back and burn the winner.",
 } as const;
 
+/**
+ * Whether tokens can be launched from this site. Paused for now.
+ *
+ * To open launches: set NEXT_PUBLIC_LAUNCHES_OPEN=true in Vercel and redeploy,
+ * or change the default below to "true".
+ */
+export const LAUNCHES_OPEN = (process.env.NEXT_PUBLIC_LAUNCHES_OPEN ?? "false") === "true";
+
 /** Canonical address of the site, used for link previews, robots and sitemap. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.peakpad.xyz").replace(
   /\/$/,

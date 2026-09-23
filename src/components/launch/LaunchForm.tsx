@@ -7,6 +7,7 @@ import { formatEther } from "viem";
 import {
   explorerTxUrl,
   feePct,
+  LAUNCHES_OPEN,
   NETWORK_NAME,
   PLATFORM_FEE_BPS,
   PLATFORM_FEE_SHARE_PCT,
@@ -155,6 +156,8 @@ export function LaunchForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Nothing is uploaded or signed while launching is paused.
+    if (!LAUNCHES_OPEN) return;
     setSubmitted(true);
     if (invalid) {
       // Bring the first problem into view — it may be far above the button.
@@ -242,21 +245,34 @@ export function LaunchForm() {
   const uploading = phase.kind === "uploading";
   const pending = phase.kind === "pending";
   const busy = uploading || pending;
-  const paused = info !== null && !info.enabled;
+  const closedHere = !LAUNCHES_OPEN;
+  const contractPaused = info !== null && !info.enabled;
+  const paused = closedHere || contractPaused;
   const submitLabel = uploading
     ? "Uploading image…"
     : pending
       ? "Confirm in your wallet…"
-      : paused
-        ? "Launches paused"
-        : connected || wallet.status === "unavailable"
-          ? "Launch token"
-          : "Connect wallet to launch";
+      : closedHere
+        ? "Launches open soon"
+        : contractPaused
+          ? "Launches paused"
+          : connected || wallet.status === "unavailable"
+            ? "Launch token"
+            : "Connect wallet to launch";
 
   return (
     <div className="launch">
       <form className="card card-pad launch-form" onSubmit={onSubmit} noValidate>
-        {paused && (
+        {closedHere && (
+          <div className="notice" role="note">
+            <Icon name="clock" />
+            <span>
+              Launching is paused for now — it opens soon. You can look around and prepare your
+              token, but nothing can be launched yet.
+            </span>
+          </div>
+        )}
+        {!closedHere && contractPaused && (
           <div className="notice notice-warn" role="note">
             <Icon name="alert" />
             <span>
