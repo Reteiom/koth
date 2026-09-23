@@ -45,6 +45,19 @@ type Phase =
 
 type ImageMode = "file" | "link";
 
+/** Field names as the form shows them, in the order they appear. */
+const FIELD_LABELS: Record<keyof LaunchTokenInput, string> = {
+  name: "Name",
+  symbol: "Ticker",
+  image: "Image",
+  description: "Description",
+  website: "Website",
+  x: "X",
+  telegram: "Telegram",
+  initialBuyEth: "Buy at launch",
+};
+const FIELD_ORDER = Object.keys(FIELD_LABELS) as (keyof LaunchTokenInput)[];
+
 const EMPTY: LaunchTokenInput = {
   name: "",
   symbol: "",
@@ -93,18 +106,24 @@ export function LaunchForm() {
     };
   }, []);
 
-  // Validate against a stand-in URL while an uploaded file stands in for the link.
-  const errors: LaunchErrors = useMemo(
-    () => validateLaunch(imageMode === "file" ? { ...input, image: "file://selected" } : input),
-    [input, imageMode],
-  );
+  // In file mode the link check does not apply: the file is validated on its
+  // own, and its link only exists after upload.
+  const errors: LaunchErrors = useMemo(() => {
+    const all = validateLaunch(input);
+    if (imageMode === "file") delete all.image;
+    return all;
+  }, [input, imageMode]);
   const imageError =
     imageMode === "file"
       ? imageFile
         ? validateImageFile(imageFile)
         : "Upload a token image."
       : errors.image;
-  const invalid = Object.keys(errors).length > 0 || Boolean(imageError);
+  const invalidFields = [
+    ...(Object.keys(errors) as (keyof LaunchTokenInput)[]).filter((k) => k !== "image"),
+    ...(imageError ? (["image"] as const) : []),
+  ];
+  const invalid = invalidFields.length > 0;
 
   const show = (k: keyof LaunchTokenInput) => (submitted || touched[k] ? errors[k] : undefined);
   const showImageError = submitted || touched.image ? imageError : undefined;
@@ -137,7 +156,16 @@ export function LaunchForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
-    if (invalid) return;
+    if (invalid) {
+      // Bring the first problem into view — it may be far above the button.
+      requestAnimationFrame(() =>
+        document.querySelector(".launch-form .has-error")?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      );
+      return;
+    }
     if (wallet.status === "unavailable") {
       setPhase({ kind: "error", message: "No wallet found. Install a browser wallet to launch." });
       return;
@@ -380,7 +408,11 @@ export function LaunchForm() {
 
         {submitted && invalid && (
           <p className="form-summary" role="alert">
-            Fix the highlighted fields to continue.
+            Fix {invalidFields.length === 1 ? "this field" : "these fields"} to continue:{" "}
+            {FIELD_ORDER.filter((k) => invalidFields.includes(k))
+              .map((k) => FIELD_LABELS[k])
+              .join(", ")}
+            .
           </p>
         )}
 
