@@ -4,6 +4,11 @@ import { ROUND_DURATION_MS } from "@/lib/config";
 import { formatClock } from "@/lib/format";
 import { useNow } from "@/lib/hooks";
 
+/** True once the round endpoint has answered that no round exists yet. */
+export function isWaitingForFirstRound(round: { status: string; data: unknown }) {
+  return round.status === "success" && round.data === null;
+}
+
 /** Remaining time and progress for a round ending at `endsAt` (ISO). */
 export function useRoundClock(endsAt: string | undefined, startsAt?: string) {
   const now = useNow(1000);
@@ -24,13 +29,32 @@ export function Countdown({
   startsAt,
   variant = "inline",
   label = "Next throne decision",
+  waiting = false,
 }: {
   endsAt: string | undefined;
   startsAt?: string;
   variant?: "inline" | "hero";
   label?: string;
+  /** No round yet: the clock starts with the first token launched here. */
+  waiting?: boolean;
 }) {
   const clock = useRoundClock(endsAt, startsAt);
+
+  if (waiting) {
+    if (variant === "inline") {
+      return <span className="countdown-inline is-waiting">starts with the first launch</span>;
+    }
+    return (
+      <div className="countdown is-waiting">
+        <div className="countdown-label">Round clock</div>
+        <div className="countdown-waiting">Starts with the first launch</div>
+        <p className="countdown-note">
+          Round 1 begins the moment the first token is launched here.
+        </p>
+      </div>
+    );
+  }
+
   const text = clock ? (clock.ended ? "Settling…" : formatClock(clock.remaining)) : "--:--:--";
   const urgent = clock !== null && !clock.ended && clock.remaining < 5 * 60_000;
 

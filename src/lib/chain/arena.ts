@@ -400,27 +400,46 @@ export async function getLeaderboard(limit = BOARD_SIZE): Promise<LeaderboardEnt
 }
 
 /**
- * When counting starts. Until ROUNDS_START_AT is set the counter stays at 0:
- * the hourly clock still runs, but no round has been played yet.
+ * Rounds begin with the first token launched from this site: round 1 starts
+ * at that launch and every round after it lasts ROUND_DURATION_MS. Until then
+ * there is no round, and the clock does not run.
+ *
+ * ROUNDS_START_AT (ISO timestamp) overrides the start if it ever needs moving.
  */
-const ROUNDS_START_AT = process.env.ROUNDS_START_AT
+const ROUNDS_START_OVERRIDE = process.env.ROUNDS_START_AT
   ? Date.parse(process.env.ROUNDS_START_AT)
   : null;
 
-function roundNumber(now: number): number {
-  if (ROUNDS_START_AT === null || Number.isNaN(ROUNDS_START_AT) || now < ROUNDS_START_AT) return 0;
-  return Math.floor((now - ROUNDS_START_AT) / ROUND_DURATION_MS) + 1;
+/** Timestamp of the first launch from this site — fixed once known. */
+let firstLaunchAt: number | null = null;
+
+async function roundsStartAt(): Promise<number | null> {
+  if (ROUNDS_START_OVERRIDE !== null && !Number.isNaN(ROUNDS_START_OVERRIDE)) {
+    return ROUNDS_START_OVERRIDE;
+  }
+  if (firstLaunchAt !== null) return firstLaunchAt;
+
+  const mine = await ourLaunches();
+  if (mine.length === 0) return null;
+  const first = mine.reduce((a, b) => (b.blockNumber < a.blockNumber ? b : a));
+  const block = await rpc().getBlock({ blockNumber: first.blockNumber, includeTransactions: false });
+  firstLaunchAt = Number(block.timestamp) * 1000;
+  return firstLaunchAt;
 }
 
-/** Rounds run on the hour; winners are settled by the bot. */
-export async function getCurrentRound(): Promise<Round> {
-  const board = await getLeaderboard(1);
+/** The round in progress, or null before the first launch from this site. */
+export async function getCurrentRound(): Promise<Round | null> {
+  const origin = await roundsStartAt();
   const now = Date.now();
-  const start = Math.floor(now / ROUND_DURATION_MS) * ROUND_DURATION_MS;
+  if (origin === null || now < origin) return null;
+
+  const index = Math.floor((now - origin) / ROUND_DURATION_MS);
+  const startsAt = origin + index * ROUND_DURATION_MS;
+  const board = await getLeaderboard(1);
   return {
-    id: roundNumber(now),
-    startsAt: new Date(start).toISOString(),
-    endsAt: new Date(start + ROUND_DURATION_MS).toISOString(),
+    id: index + 1,
+    startsAt: new Date(startsAt).toISOString(),
+    endsAt: new Date(startsAt + ROUND_DURATION_MS).toISOString(),
     kingAddress: board[0]?.token.address ?? null,
   };
 }

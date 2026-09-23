@@ -18,7 +18,7 @@ import { Icon } from "@/components/ui/Icon";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TokenAvatar } from "@/components/ui/TokenAvatar";
-import { Countdown } from "./Countdown";
+import { Countdown, isWaitingForFirstRound } from "./Countdown";
 import { RankChart } from "./RankChart";
 
 const usd = (v: number) => formatUsd(v);
@@ -226,7 +226,12 @@ function ThronePanel({ comp, compError }: { comp: TokenCompetition | undefined; 
         </p>
       )}
 
-      <Countdown variant="hero" endsAt={round.data?.endsAt} startsAt={round.data?.startsAt} />
+      <Countdown
+        variant="hero"
+        endsAt={round.data?.endsAt}
+        startsAt={round.data?.startsAt}
+        waiting={isWaitingForFirstRound(round)}
+      />
 
       {comp && (
         <dl className="mini-stats">

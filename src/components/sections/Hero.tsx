@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { feePct, PLATFORM_FEE_BPS, TRADING_FEE_BPS } from "@/lib/config";
 import { useCurrentRound } from "@/lib/data/hooks";
-import { Countdown } from "@/components/arena/Countdown";
+import { Countdown, isWaitingForFirstRound } from "@/components/arena/Countdown";
 import { Icon } from "@/components/ui/Icon";
 
 const POINTS = [
@@ -20,11 +20,20 @@ export function Hero() {
       <HillArt />
       <div className="container hero-inner">
         <a href="#arena" className="pill hero-pill">
-          <span className="pill-tag">
-            <span className="live-dot" />
-            Round {round.data ? <span className="num">#{round.data.id}</span> : "live"}
-          </span>
-          Throne decided in <Countdown endsAt={round.data?.endsAt} />
+          {isWaitingForFirstRound(round) ? (
+            <>
+              <span className="pill-tag">Round 1</span>
+              Starts with the first launch
+            </>
+          ) : (
+            <>
+              <span className="pill-tag">
+                <span className="live-dot" />
+                Round {round.data ? <span className="num">#{round.data.id}</span> : "—"}
+              </span>
+              Throne decided in <Countdown endsAt={round.data?.endsAt} />
+            </>
+          )}
           <Icon name="arrowRight" className="hero-pill-arrow" />
         </a>
 

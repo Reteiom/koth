@@ -11,7 +11,7 @@ import { Icon } from "@/components/ui/Icon";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { TokenAvatar } from "@/components/ui/TokenAvatar";
-import { Countdown } from "./Countdown";
+import { Countdown, isWaitingForFirstRound } from "./Countdown";
 
 const usd = (v: number) => formatUsd(v);
 
@@ -67,6 +67,7 @@ export function LiveArena() {
               variant="hero"
               endsAt={round.data?.endsAt}
               startsAt={round.data?.startsAt}
+              waiting={isWaitingForFirstRound(round)}
             />
 
             <div className="challengers">
