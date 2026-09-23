@@ -1,5 +1,6 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import { blobAuth, blobStoreId, blobToken, PRIVATE_IMAGE_PREFIX } from "@/lib/blob";
 import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "@/lib/upload";
 
 /**
@@ -14,32 +15,6 @@ import { IMAGE_MAX_BYTES, IMAGE_TYPES } from "@/lib/upload";
  *
  * With neither set, uploads report 503 and the launch form asks for a link.
  */
-
-/**
- * Vercel names the token after the store it belongs to (BLOB_READ_WRITE_TOKEN,
- * but also e.g. PEAK_READ_WRITE_TOKEN), so any of them is accepted.
- */
-function blobToken(): string | undefined {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
-  for (const [name, value] of Object.entries(process.env)) {
-    if (!value) continue;
-    if (name.endsWith("_READ_WRITE_TOKEN") || value.startsWith("vercel_blob_rw_")) return value;
-  }
-  return undefined;
-}
-
-/**
- * Newer Blob connections carry no token at all: Vercel adds BLOB_STORE_ID and
- * the SDK authenticates with the deployment's OIDC token. A store id under a
- * custom prefix is accepted too and passed explicitly.
- */
-function blobStoreId(): string | undefined {
-  if (process.env.BLOB_STORE_ID) return process.env.BLOB_STORE_ID;
-  for (const [name, value] of Object.entries(process.env)) {
-    if (value && name.endsWith("STORE_ID") && value.startsWith("store_")) return value;
-  }
-  return undefined;
-}
 
 function provider(): "pinata" | "blob" | "blob-oidc" | null {
   if (process.env.PINATA_JWT) return "pinata";
@@ -72,16 +47,41 @@ async function pinToIpfs(file: File): Promise<string> {
   return `ipfs://${data.IpfsHash}`;
 }
 
-async function putInBlob(file: File): Promise<string> {
-  const token = blobToken();
-  const blob = await put(`tokens/${file.name}`, file, {
-    access: "public",
+/**
+ * Stores the image in Blob. Public stores hand back a public URL. Private
+ * stores cannot serve files to strangers, so the image is served through
+ * /api/blob on this site and that address is what goes on-chain.
+ */
+/** Learned on the first upload, so later ones skip the failing public attempt. */
+let storeIsPrivate = false;
+
+async function putInBlob(file: File, origin: string): Promise<string> {
+  const common = {
     addRandomSuffix: true,
     contentType: file.type,
-    // A read-write token when there is one; otherwise OIDC with the store id.
-    ...(token ? { token } : { storeId: blobStoreId() }),
-  });
-  return blob.url;
+    ...blobAuth(),
+  } as const;
+  const pathname = `${PRIVATE_IMAGE_PREFIX}${file.name}`;
+
+  if (!storeIsPrivate) {
+    try {
+      const blob = await put(pathname, file, { ...common, access: "public" });
+      return blob.url;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (!/private/i.test(message)) throw error;
+      storeIsPrivate = true;
+    }
+  }
+
+  const blob = await put(pathname, file, { ...common, access: "private" });
+  return `${origin}/api/blob/${blob.pathname.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+/** The address images are served from — the production domain when known. */
+function siteOrigin(request: Request): string {
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  return production ? `https://${production}` : new URL(request.url).origin;
 }
 
 export async function POST(request: Request) {
@@ -106,7 +106,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const url = target === "pinata" ? await pinToIpfs(file) : await putInBlob(file);
+    const url =
+      target === "pinata" ? await pinToIpfs(file) : await putInBlob(file, siteOrigin(request));
     return NextResponse.json({ url });
   } catch (error) {
     // Storage SDK messages name the missing setting, never a credential.
