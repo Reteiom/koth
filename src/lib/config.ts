@@ -15,12 +15,12 @@ export const SITE = {
 } as const;
 
 /**
- * Whether tokens can be launched from this site. Paused for now.
+ * Whether tokens can be launched from this site. Open.
  *
- * To open launches: set NEXT_PUBLIC_LAUNCHES_OPEN=true in Vercel and redeploy,
- * or change the default below to "true".
+ * To pause launches: set NEXT_PUBLIC_LAUNCHES_OPEN=false in Vercel and
+ * redeploy, or change the default below to "false".
  */
-export const LAUNCHES_OPEN = (process.env.NEXT_PUBLIC_LAUNCHES_OPEN ?? "false") === "true";
+export const LAUNCHES_OPEN = (process.env.NEXT_PUBLIC_LAUNCHES_OPEN ?? "true") === "true";
 
 /** Canonical address of the site, used for link previews, robots and sitemap. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.peakpad.xyz").replace(
