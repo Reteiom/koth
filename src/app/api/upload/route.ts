@@ -28,9 +28,23 @@ function blobToken(): string | undefined {
   return undefined;
 }
 
-function provider(): "pinata" | "blob" | null {
+/**
+ * Newer Blob connections carry no token at all: Vercel adds BLOB_STORE_ID and
+ * the SDK authenticates with the deployment's OIDC token. A store id under a
+ * custom prefix is accepted too and passed explicitly.
+ */
+function blobStoreId(): string | undefined {
+  if (process.env.BLOB_STORE_ID) return process.env.BLOB_STORE_ID;
+  for (const [name, value] of Object.entries(process.env)) {
+    if (value && name.endsWith("STORE_ID") && value.startsWith("store_")) return value;
+  }
+  return undefined;
+}
+
+function provider(): "pinata" | "blob" | "blob-oidc" | null {
   if (process.env.PINATA_JWT) return "pinata";
   if (blobToken()) return "blob";
+  if (blobStoreId()) return "blob-oidc";
   return null;
 }
 
@@ -59,11 +73,13 @@ async function pinToIpfs(file: File): Promise<string> {
 }
 
 async function putInBlob(file: File): Promise<string> {
+  const token = blobToken();
   const blob = await put(`tokens/${file.name}`, file, {
     access: "public",
     addRandomSuffix: true,
     contentType: file.type,
-    token: blobToken(),
+    // A read-write token when there is one; otherwise OIDC with the store id.
+    ...(token ? { token } : { storeId: blobStoreId() }),
   });
   return blob.url;
 }
@@ -92,7 +108,10 @@ export async function POST(request: Request) {
   try {
     const url = target === "pinata" ? await pinToIpfs(file) : await putInBlob(file);
     return NextResponse.json({ url });
-  } catch {
-    return NextResponse.json({ error: "Upload failed. Try again." }, { status: 502 });
+  } catch (error) {
+    // Storage SDK messages name the missing setting, never a credential.
+    const detail = error instanceof Error ? error.message.split("\n")[0].slice(0, 200) : undefined;
+    console.error("[upload] failed via", target, detail);
+    return NextResponse.json({ error: "Upload failed. Try again.", detail }, { status: 502 });
   }
 }
