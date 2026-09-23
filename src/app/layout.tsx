@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
-import { SITE } from "@/lib/config";
+import { SITE, SITE_URL } from "@/lib/config";
 import { WalletProvider } from "@/lib/wallet/WalletProvider";
 import "./globals.css";
 import "./components.css";
@@ -17,6 +17,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: `${SITE.fullName} — ${SITE.tagline}`,
     template: `%s · ${SITE.name}`,

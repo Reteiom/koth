@@ -23,7 +23,7 @@ const GATEWAYS = (
 export async function GET(_request: Request, ctx: RouteContext<"/api/ipfs/[...path]">) {
   const { path } = await ctx.params;
   const cid = path.join("/");
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(cid)) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(cid) || cid.includes("..")) {
     return NextResponse.json({ error: "Invalid IPFS path" }, { status: 400 });
   }
 

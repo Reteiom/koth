@@ -60,7 +60,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/arena/[[...
       }
       if (!path[2]) {
         const token = await getToken(address);
-        return token ? json(token) : json({ error: "Token not found" }, 404);
+        // Not ours or not a token: an answer, not an error — the page says so.
+        return json(token ?? null);
       }
     }
 

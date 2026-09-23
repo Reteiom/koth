@@ -14,6 +14,12 @@ export const SITE = {
     "A launchpad where tokens compete on market cap. Every hour the token at the Peak wins the round — and platform fees buy back and burn the winner.",
 } as const;
 
+/** Canonical address of the site, used for link previews, robots and sitemap. */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.peakpad.xyz").replace(
+  /\/$/,
+  "",
+);
+
 /** Public vault address that receives platform fees. */
 export const VAULT_ADDRESS = "0xe5d92f9f95cF9dCb278BE34E68C0cB3cd94a85C4";
 
